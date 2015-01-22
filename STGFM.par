@@ -1,7 +1,7 @@
 1.7	! energy in GeV
 25	! iord for exponentials
 2       ! multipole order (1=dipole, 2=quadrupole etc)
-0.0, 0.195 ! integration interval (meter)
+-0.195, 0.0 ! integration interval (meter)
 1
 -0.2,0.2 ! expansion interval for Fourier decomposition
 2       ! maximum p-value for transverse field expansion 

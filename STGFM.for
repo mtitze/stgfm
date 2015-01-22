@@ -43,12 +43,12 @@ c------------- initialize
                       ! 0: Axf Ayf /= 0
       iwbnbnh=1
 
-      rpoint=1.d0    ! some test constants which can be added on A_r
-      ppoint=1.d0    ! and A_phi for testing reasons
+      rpoint=0.d0    ! some test constants which can be added on A_r
+      ppoint=0.d0    ! and A_phi for testing reasons
       
       call get_input
         if(ireverse.eq.1)scal=-scal              
-      call cn_from_cntsnt 
+      call cn_from_cntsnt_new_JB 
         if(ianzi.eq.1)call readjust_iinterval  
       call get_Gm0 
       call scal_cn      ! include stiffness of beam              
@@ -950,6 +950,60 @@ c        cni(nfou)=-snt(nfou)/denom   ! ueblicherw.: imag = cos + i*sin, nicht '
       return      
       end         
 
+c------------------------------------        
+      subroutine cn_from_cntsnt_new_JB     
+c------------------------------------      
+      include 'STGFM.cmn'  
+      dimension deno(0:20)
+      
+      xpi=4.d0*datan(1.d0)
+      r02=r00*r00
+      xkx0=(2.d0*xpi)/xl
+      
+      deno(0)=xmo*(r00**(mo-1))
+      cnr(0)=cnt(0)/(deno(0)/dfloat(ifacult(mo)))
+
+      cni(0)=0.d0
+      cn(0)=cnr(0)+xi*cni(0)
+      
+      xkxn(0)=0.d0
+      xkxn2(0)=0.d0
+      do nfou=1,iord
+        xkxn(nfou)=xkx0*dfloat(nfou)
+        xkxn2(nfou)=xkxn(nfou)*xkxn(nfou)
+        xkxn(-nfou)=-xkxn(nfou)
+        xkxn2(-nfou)=xkxn2(nfou)
+      enddo          
+      
+      do ip=1,mp0
+        deno(ip)=deno(ip-1)*(r02/dfloat(4*(mo+ip)*ip))      
+      enddo
+
+      do nfou=1,nfour 
+      denom=0.d0
+      do ip=0,mp0
+        denom=denom+deno(ip)*xkxn2(nfou)**ip
+      enddo
+        cnr(nfou)=cnt(nfou)/denom
+        cni(nfou)=-snt(nfou)/denom
+        cn(nfou)=cnr(nfou)+xi*cni(nfou)
+        cn(-nfou)=dconjg(cn(nfou))               
+      enddo
+      
+      do nfou=-nfour,nfour
+      if((i_only_c0.eq.1).and.(nfou.ne.0))cn(nfou)=0.d0
+      enddo      
+
+      if(iverbose.eq.1)write(6,*)'writing CN*r00 to CN.DAT ',nfour  
+      open(unit=10,file='CN.DAT',status='unknown')    
+      do nfou=-nfour,nfour
+      write(10,*)nfou,r00*cn(nfou)
+      enddo      
+      close(10)
+      
+      return      
+      end       
+
 c--------------------------------        
       subroutine get_Gm0     
 c--------------------------------      
@@ -1025,7 +1079,7 @@ c---- define ap & aph; indices from 0 to mp0
       enddo
  
       do ip=1,mp0
-        ap(ip)=ap(ip)*(mo+2*ip)
+        ap(ip)=ap(ip)*(mo+2.d0*ip)
         aph(ip)=aph(ip)*mo
       enddo
 
