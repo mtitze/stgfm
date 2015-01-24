@@ -33,7 +33,7 @@ c------------- initialize
       ireverse=0   ! 1: change sign of all fields
       ilinear=0     ! 1: X002=0, Y002=0
                     ! 10: X002=0, Y002=0 & X011=X101=Y011=Y101=0
-      i_only_c0=0   ! 1: use only c0 Fourier coefficent 
+      i_only_c0=1   ! 1: use only c0 Fourier coefficent 
       
       ifldzero=0    ! 1: field is turned off 
       isinoff=1     ! 1: no sin-terms in longitudinal expansion
@@ -219,8 +219,16 @@ c======================= start 3D-multipole ========================
        z0=0.d0
        zf=zf0
       endif
-      call facexp
+c      call facexp
       endif
+
+      call facexp
+
+c      write(6,*)'*** PRE cn(0) ', cn(0)
+c      call cn_from_cntsnt_new_JB
+c      call scal_cn    ! call cn_from_cntsnt_new_JB only
+c                      ! together with scal_cn
+c      write(6,*)'*** PAST cn(0) ', cn(0)
 
       write(6,*)'  '
       write(6,*)' start multipole segment ',isteps
@@ -278,6 +286,8 @@ c--------- vierte Ordnung
       
 c-----------------------------------------
 
+      call get_fqpk
+
       call gx(r0,phi0)  ! groß x
       call gy(r0,phi0)  ! groß y 
       call get_AxAy(r0,phi0,z0,Ax0,Ay0)          
@@ -289,15 +299,20 @@ c-----------------------------------------
       endif
         write(6,*)' px0, py0 ',px0,py0  
         write(6,*)' pxf, pyf ',pxf,pyf       
-      call get_fqpk
       if(i_old.ne.1)then
-        call get_xfyf(x0,y0,xp0,yp0,Ax0,Ay0,pxf,pyf,xf,yf) 
+        call get_xfyf(x0,y0,pxf,pyf,xf,yf) 
         else
         call get_xfyf_old(x0,y0,xp0,yp0,Ax0,Ay0,pxf,pyf,xf,yf)
       endif
       call cartesian2polar(xf,yf,rf,phif)
+
+      call zerobsdbs
+c      call zerodsdds
+c      call zeroesdes
+
       call bnbnh(rf,phif)     
-      call dndnh001(rf,phif) 
+      call dndnh001(rf,phif)
+
       call get_AxAy(rf,phif,zf,Axf,Ayf)
       
       xpf=pxf-Axf        ! Achtung xpf = pxf und ypf = pyf
@@ -737,6 +752,8 @@ c      write(6,*)' nfour input = ',nfour
       read(10,*)itwo_steps
       close(10)
 
+      scal=scal*atrack
+
       do nfou=0,100
         cnt(nfou)=0.d0
         snt(nfou)=0.d0
@@ -755,10 +772,10 @@ c------- the following operation compnesates an error in FOUR_NEW
 c------- scaling 
       do nfou=0,nfour
 c      write(6,*)'old cnt(nfou), nfou ',cnt(nfour), nfou
-c      cnt(nfou)=cnt(nfou)
-c      snt(nfou)=snt(nfou)
-      cnt(nfou)=cnt(nfou)*atrack
-      snt(nfou)=snt(nfou)*atrack
+      cnt(nfou)=cnt(nfou)
+      snt(nfou)=snt(nfou)
+c      cnt(nfou)=cnt(nfou)*atrack
+c      snt(nfou)=snt(nfou)*atrack
 c      write(6,*)'new cnt(nfou) ',cnt(nfou)
 c      write(6,*)'new snt(nfou) ',snt(nfou)
       enddo
@@ -973,8 +990,8 @@ c------------------------------------
         xkxn2(nfou)=xkxn(nfou)*xkxn(nfou)
         xkxn(-nfou)=-xkxn(nfou)
         xkxn2(-nfou)=xkxn2(nfou)
-      enddo          
-      
+      enddo   
+
       do ip=1,mp0
         deno(ip)=deno(ip-1)*(r02/dfloat(4*(mo+ip)*ip))      
       enddo
@@ -987,12 +1004,13 @@ c------------------------------------
         cnr(nfou)=cnt(nfou)/denom
         cni(nfou)=-snt(nfou)/denom
         cn(nfou)=cnr(nfou)+xi*cni(nfou)
-        cn(-nfou)=dconjg(cn(nfou))               
+        cn(-nfou)=dconjg(cn(nfou))          
       enddo
       
       do nfou=-nfour,nfour
       if((i_only_c0.eq.1).and.(nfou.ne.0))cn(nfou)=0.d0
       enddo      
+  
 
       if(iverbose.eq.1)write(6,*)'writing CN*r00 to CN.DAT ',nfour  
       open(unit=10,file='CN.DAT',status='unknown')    
@@ -1158,16 +1176,15 @@ c------------------------------------------------------------------------------
       complex*16 facc,si    
       
       r2=r*r
+
+      write(6,*)' cn(0) in bnbnh-routine: ', cn(0)
       
       bn(0) =(1.d0/dfloat(ifacult(mo-1)))*cn(0)*r**(mo-1)
       bnh(0)=(1.d0/dfloat(ifacult(mo-1)))*cn(0)*r**(mo-1)
-c      bn(0) =(1.d0/dfloat(ifacult(mo-1)))*cn(0)*r**(mo-1)*atrack
-c      bnh(0)=(1.d0/dfloat(ifacult(mo-1)))*cn(0)*r**(mo-1)*atrack
          
       do nfou=1,iord
       bn(nfou)=0.d0
       bnh(nfou)=0.d0
-c      facc=cn(nfou)*atrack
       facc=cn(nfou)
       re=r**(mo-3) 
       
@@ -1177,8 +1194,8 @@ c      facc=cn(nfou)*atrack
       bnh(nfou)=bnh(nfou)+apnh(ip,nfou)*re 
       enddo
                   
-      bn(nfou)=bn(nfou)*facc        
-      bnh(nfou)=bnh(nfou)*facc          
+      bn(nfou)=bn(nfou)*facc    
+      bnh(nfou)=bnh(nfou)*facc     
       
       bn(-nfou)=dconjg(bn(nfou))    
       bnh(-nfou)=dconjg(bnh(nfou))           
@@ -1562,7 +1579,7 @@ c---------------------------------
       dn001(0)=dn001(0)-dn001(nfou)*cdexp(xi*xkxn(nfou)*zf)     
       dnh001(nfou)=-(xi/xkxn(nfou))*dcos(xmo*phi)*
      &   (cdexp(-xi*xkxn(nfou)*s1)*bnh(0)-bnh(nfou))
-      dnh001(0)=dnh001(0)-dnh001(nfou)*cdexp(xi*xkxn(nfou)*zf)        
+      dnh001(0)=dnh001(0)-dnh001(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
  
       do nfou=1,iord
@@ -1571,8 +1588,8 @@ c---------------------------------
       dn001(0)=dn001(0)-dn001(nfou)*cdexp(xi*xkxn(nfou)*zf)   
       dnh001(nfou)=-(xi/xkxn(nfou))*dcos(xmo*phi)*
      &   (cdexp(-xi*xkxn(nfou)*s1)*bnh(0)-bnh(nfou))  
-      dnh001(0)=dnh001(0)-dnh001(nfou)*cdexp(xi*xkxn(nfou)*zf)        
-      enddo                  
+      dnh001(0)=dnh001(0)-dnh001(nfou)*cdexp(xi*xkxn(nfou)*zf)
+      enddo            
 
       dn001(0)=dazf_zero*dn001(0)
       dnh001(0)=dazf_zero*dnh001(0)      
@@ -3535,13 +3552,6 @@ c-------------------------------------------
       Y021=(dsin(phi)*dreta021(0)+(dcos(phi)/r)*dpeta021(0))*(z0-zf)  
       Y111=(dsin(phi)*dreta111(0)+(dcos(phi)/r)*dpeta111(0))*(z0-zf)  
       Y003=(dsin(phi)*dreta003(0)+(dcos(phi)/r)*dpeta003(0))*(z0-zf)  
-      
-      write(6,*)' y003 parts: dreta003(0), dpeta003(0) ',
-     &  dreta003(0), dpeta003(0)
-      write(6,*)' 1/r ', 1/r
-      write(6,*)' !!!!----------- '
-      write(6,*)' 1/r*dpeta003(0)(z0-zf) :',1/r*dpeta003(0)*(z0-zf)
-      write(6,*)' !!!!----------- '
 
       y202=(dsin(phi)*dreta202(0)+(dcos(phi)/r)*dpeta202(0))*(z0-zf) 
       y112=(dsin(phi)*dreta112(0)+(dcos(phi)/r)*dpeta112(0))*(z0-zf)
@@ -3775,11 +3785,6 @@ c-------------------------------------------
       pxf=px0
       pyf=py0
 
-      write(6,*)' x00n check ',x00n
-      write(6,*)' y00n check ',y00n
-      write(6,*)'> y002 check ',y002
-      write(6,*)'> y003 check ',y003
-
 100   continue
       isteps=isteps+1
 
@@ -4010,7 +4015,7 @@ c      f012=0.d0     ! der Term scheint falsch zu sein
       end
       
 c-------------------------------------------
-      subroutine get_xfyf(x0,y0,xp0,yp0,ax0,ay0,pxf,pyf,xf,yf)      
+      subroutine get_xfyf(x0,y0,pxf,pyf,xf,yf)      
 c-------------------------------------------
       include 'STGFM.cmn'      
 
@@ -4063,6 +4068,8 @@ c-------------------------------------------
       f11=f111+f112
       f02=f021+f022
       endif
+
+c      write(6,*) 'x0, pxf, f101', x0, pxf, f101
 
       xf=x0+pxf*(zf-z0)+f10+f11*pyf+2.d0*f20*pxf
       yf=y0+pyf*(zf-z0)+f01+f11*pxf+2.d0*f02*pyf
