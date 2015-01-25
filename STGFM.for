@@ -38,14 +38,11 @@ c------------- initialize
       ifldzero=0    ! 1: field is turned off 
       isinoff=1     ! 1: no sin-terms in longitudinal expansion
       i_old=0       ! 1: old code
-      iverbose=0  
-      dazf_zero=0.d0  ! 1: vector potential Axf Ayf = 0 (old case)
+      iverbose=1  
+c      dazf_zero=0.d0  ! 1: vector potential Axf Ayf = 0 (old case)
                       ! 0: Axf Ayf /= 0
       iwbnbnh=1
 
-      rpoint=0.d0    ! some test constants which can be added on A_r
-      ppoint=0.d0    ! and A_phi for testing reasons
-      
       call get_input
         if(ireverse.eq.1)scal=-scal              
       call cn_from_cntsnt_new_JB 
@@ -752,7 +749,7 @@ c      write(6,*)' nfour input = ',nfour
       read(10,*)itwo_steps
       close(10)
 
-      scal=scal*atrack
+      scal=scal
 
       do nfou=0,100
         cnt(nfou)=0.d0
@@ -769,15 +766,10 @@ c------- the following operation compnesates an error in FOUR_NEW
       cnt(0)=cnt(0)/2.d0     ! snt(0)=0
       if(ifldzero.eq.1)cnt(0)=0.d0     ! snt(0)=0            
         
-c------- scaling 
+c------- atrack-scaling 
       do nfou=0,nfour
-c      write(6,*)'old cnt(nfou), nfou ',cnt(nfour), nfou
-      cnt(nfou)=cnt(nfou)
-      snt(nfou)=snt(nfou)
-c      cnt(nfou)=cnt(nfou)*atrack
-c      snt(nfou)=snt(nfou)*atrack
-c      write(6,*)'new cnt(nfou) ',cnt(nfou)
-c      write(6,*)'new snt(nfou) ',snt(nfou)
+      cnt(nfou)=cnt(nfou)*atrack
+      snt(nfou)=snt(nfou)*atrack
       enddo
 
 c------------ del sin-terms for test purposes
@@ -1176,8 +1168,6 @@ c------------------------------------------------------------------------------
       complex*16 facc,si    
       
       r2=r*r
-
-      write(6,*)' cn(0) in bnbnh-routine: ', cn(0)
       
       bn(0) =(1.d0/dfloat(ifacult(mo-1)))*cn(0)*r**(mo-1)
       bnh(0)=(1.d0/dfloat(ifacult(mo-1)))*cn(0)*r**(mo-1)
@@ -1570,80 +1560,80 @@ c     missing sin(m*phi), cos(m*phi) are implemented
 c
 c---------------------------------   
       include 'STGFM.cmn' 
-      dn001(0)=0.d0
-      dnh001(0)=0.d0 
+
+      dn001(0)=0.5d0*(s1+s2)*bn(0)
+      dnh001(0)=-0.5d0*(s1+s2)*bnh(0)
       
       do nfou=-iord,-1
       dn001(nfou)=(xi/xkxn(nfou))*dsin(xmo*phi)*
      &   (cdexp(-xi*xkxn(nfou)*s1)*bn(0)-bn(nfou))
-      dn001(0)=dn001(0)-dn001(nfou)*cdexp(xi*xkxn(nfou)*zf)     
+c      dn001(0)=dn001(0)-dn001(nfou)*cdexp(xi*xkxn(nfou)*zf)     
       dnh001(nfou)=-(xi/xkxn(nfou))*dcos(xmo*phi)*
      &   (cdexp(-xi*xkxn(nfou)*s1)*bnh(0)-bnh(nfou))
-      dnh001(0)=dnh001(0)-dnh001(nfou)*cdexp(xi*xkxn(nfou)*zf)
+c      dnh001(0)=dnh001(0)-dnh001(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
  
       do nfou=1,iord
       dn001(nfou)=(xi/xkxn(nfou))*dsin(xmo*phi)*
      &   (cdexp(-xi*xkxn(nfou)*s1)*bn(0)-bn(nfou))
-      dn001(0)=dn001(0)-dn001(nfou)*cdexp(xi*xkxn(nfou)*zf)   
+c      dn001(0)=dn001(0)-dn001(nfou)*cdexp(xi*xkxn(nfou)*zf)   
       dnh001(nfou)=-(xi/xkxn(nfou))*dcos(xmo*phi)*
      &   (cdexp(-xi*xkxn(nfou)*s1)*bnh(0)-bnh(nfou))  
-      dnh001(0)=dnh001(0)-dnh001(nfou)*cdexp(xi*xkxn(nfou)*zf)
+c      dnh001(0)=dnh001(0)-dnh001(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo            
 
-      dn001(0)=dazf_zero*dn001(0)
-      dnh001(0)=dazf_zero*dnh001(0)      
-
-      dn001(0)=ppoint
-      dnh001(0)=rpoint
-
-c      write(6,*) '>>>>>>> dnh001(0) ', dnh001(0)
-      
+c      dn001(0)=dazf_zero*dn001(0)
+c      dnh001(0)=dazf_zero*dnh001(0)            
       return
       end    
 
 c--------------------------------        
       subroutine ddndnh001      
 c--------------------------------      
-      include 'STGFM.cmn' 
+      include 'STGFM.cmn'
+      drdn001(0)=0.5d0*(s1+s2)*drbn(0)
+      drdnh001(0)=-0.5d0*(s1+s2)*drbnh(0)
+         
+      dphidn001(0)=0.5d0*(s1+s2)*dphibn(0)
+      dphidnh001(0)=-0.5d0*(s1+s2)*dphibnh(0)
 
       do nfou=-iord,-1
       drdn001(nfou)=(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*drbn(0)-drbn(nfou))     
-      drdn001(0)=drdn001(0)-drdn001(nfou)*cdexp(xi*xkxn(nfou)*zf)  
+c      drdn001(0)=drdn001(0)-drdn001(nfou)*cdexp(xi*xkxn(nfou)*zf)  
       dphidn001(nfou)=(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*dphibn(0)-dphibn(nfou))
-      dphidn001(0)=dphidn001(0)-dphidn001(nfou)*cdexp(xi*xkxn(nfou)*zf) 
+c      dphidn001(0)=dphidn001(0)-dphidn001(nfou)*cdexp(xi*xkxn(nfou)*zf) 
       drdnh001(nfou)=-(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*drbnh(0)-drbnh(nfou))
-      drdnh001(0)=drdnh001(0)-drdnh001(nfou)*cdexp(xi*xkxn(nfou)*zf)
+c      drdnh001(0)=drdnh001(0)-drdnh001(nfou)*cdexp(xi*xkxn(nfou)*zf)
       dphidnh001(nfou)=-(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*dphibnh(0)-dphibnh(nfou))           
-      dphidnh001(0)=dphidnh001(0)-dphidnh001(nfou)*
-     &   cdexp(xi*xkxn(nfou)*zf)      
+c      dphidnh001(0)=dphidnh001(0)-dphidnh001(nfou)*
+c     &   cdexp(xi*xkxn(nfou)*zf)      
       enddo
       
       do nfou=1,iord
       drdn001(nfou)=(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*drbn(0)-drbn(nfou))     
-      drdn001(0)=drdn001(0)-drdn001(nfou)*cdexp(xi*xkxn(nfou)*zf)  
+c      drdn001(0)=drdn001(0)-drdn001(nfou)*cdexp(xi*xkxn(nfou)*zf)  
       dphidn001(nfou)=(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*dphibn(0)-dphibn(nfou))
-      dphidn001(0)=dphidn001(0)-dphidn001(nfou)*cdexp(xi*xkxn(nfou)*zf) 
+c      dphidn001(0)=dphidn001(0)-dphidn001(nfou)*cdexp(xi*xkxn(nfou)*zf) 
       drdnh001(nfou)=-(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*drbnh(0)-drbnh(nfou))
-      drdnh001(0)=drdnh001(0)-drdnh001(nfou)*cdexp(xi*xkxn(nfou)*zf) 
+c      drdnh001(0)=drdnh001(0)-drdnh001(nfou)*cdexp(xi*xkxn(nfou)*zf) 
       dphidnh001(nfou)=-(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*dphibnh(0)-dphibnh(nfou))           
-      dphidnh001(0)=dphidnh001(0)-dphidnh001(nfou)*
-     &   cdexp(xi*xkxn(nfou)*zf)              
+c      dphidnh001(0)=dphidnh001(0)-dphidnh001(nfou)*
+c     &   cdexp(xi*xkxn(nfou)*zf)              
       enddo
       
-      drdn001(0)=dazf_zero*drdn001(0)
-      drdnh001(0)=dazf_zero*drdnh001(0)
+c      drdn001(0)=dazf_zero*drdn001(0)
+c      drdnh001(0)=dazf_zero*drdnh001(0)
          
-      dphidn001(0)=dazf_zero*dphidn001(0)
-      dphidnh001(0)=dazf_zero*dphidnh001(0)
+c      dphidn001(0)=dazf_zero*dphidn001(0)
+c      dphidnh001(0)=dazf_zero*dphidnh001(0)
       
 c      write(6,*)'------------------------------'
 c      write(6,*)' drdnh001(1) ', drdnh001(1) 
@@ -1658,60 +1648,69 @@ c--------------------------------
 c--------------------------------      
       include 'STGFM.cmn' 
 
+      dppdn001(0)=0.5d0*(s1+s2)*dppbn(0)
+      dppdnh001(0)=-0.5d0*(s1+s2)*dppbnh(0)
+      
+      dprdn001(0)=0.5d0*(s1+s2)*dprbn(0)
+      dprdnh001(0)=-0.5d0*(s1+s2)*dprbnh(0)
+      
+      drrdn001(0)=0.5d0*(s1+s2)*drrbn(0)
+      drrdnh001(0)=-0.5d0*(s1+s2)*drrbnh(0)
+
       do nfou=-iord,-1
       dppdn001(nfou)=(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*dppbn(0)-dppbn(nfou))     
-      dppdn001(0)=dppdn001(0)-dppdn001(nfou)*cdexp(xi*xkxn(nfou)*zf)  
+c      dppdn001(0)=dppdn001(0)-dppdn001(nfou)*cdexp(xi*xkxn(nfou)*zf)  
       dprdn001(nfou)=(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*dprbn(0)-dprbn(nfou))
-      dprdn001(0)=dprdn001(0)-dprdn001(nfou)*cdexp(xi*xkxn(nfou)*zf) 
+c      dprdn001(0)=dprdn001(0)-dprdn001(nfou)*cdexp(xi*xkxn(nfou)*zf) 
       drrdn001(nfou)=(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*drrbn(0)-drrbn(nfou))     
-      drrdn001(0)=drrdn001(0)-drrdn001(nfou)*cdexp(xi*xkxn(nfou)*zf)  
+c      drrdn001(0)=drrdn001(0)-drrdn001(nfou)*cdexp(xi*xkxn(nfou)*zf)  
       
       dppdnh001(nfou)=-(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*dppbnh(0)-dppbnh(nfou))
-      dppdnh001(0)=dppdnh001(0)-dppdnh001(nfou)*cdexp(xi*xkxn(nfou)*zf) 
+c      dppdnh001(0)=dppdnh001(0)-dppdnh001(nfou)*cdexp(xi*xkxn(nfou)*zf) 
       dprdnh001(nfou)=-(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*dprbnh(0)-dprbnh(nfou))           
-      dprdnh001(0)=dprdnh001(0)-dprdnh001(nfou)*
-     &   cdexp(xi*xkxn(nfou)*zf)      
+c      dprdnh001(0)=dprdnh001(0)-dprdnh001(nfou)*
+c     &   cdexp(xi*xkxn(nfou)*zf)      
       drrdnh001(nfou)=-(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*drrbnh(0)-drrbnh(nfou))
-      drrdnh001(0)=drrdnh001(0)-drrdnh001(nfou)*cdexp(xi*xkxn(nfou)*zf) 
+c      drrdnh001(0)=drrdnh001(0)-drrdnh001(nfou)*cdexp(xi*xkxn(nfou)*zf) 
       enddo
       
       do nfou=1,iord
       dppdn001(nfou)=(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*dppbn(0)-dppbn(nfou))     
-      dppdn001(0)=dppdn001(0)-dppdn001(nfou)*cdexp(xi*xkxn(nfou)*zf)  
+c      dppdn001(0)=dppdn001(0)-dppdn001(nfou)*cdexp(xi*xkxn(nfou)*zf)  
       dprdn001(nfou)=(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*dprbn(0)-dprbn(nfou))
-      dprdn001(0)=dprdn001(0)-dprdn001(nfou)*cdexp(xi*xkxn(nfou)*zf) 
+c      dprdn001(0)=dprdn001(0)-dprdn001(nfou)*cdexp(xi*xkxn(nfou)*zf) 
       drrdn001(nfou)=(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*drrbn(0)-drrbn(nfou))     
-      drrdn001(0)=drrdn001(0)-drrdn001(nfou)*cdexp(xi*xkxn(nfou)*zf)  
+c      drrdn001(0)=drrdn001(0)-drrdn001(nfou)*cdexp(xi*xkxn(nfou)*zf)  
       
       dppdnh001(nfou)=-(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*dppbnh(0)-dppbnh(nfou))
-      dppdnh001(0)=dppdnh001(0)-dppdnh001(nfou)*cdexp(xi*xkxn(nfou)*zf) 
+c      dppdnh001(0)=dppdnh001(0)-dppdnh001(nfou)*cdexp(xi*xkxn(nfou)*zf) 
       dprdnh001(nfou)=-(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*dprbnh(0)-dprbnh(nfou))           
-      dprdnh001(0)=dprdnh001(0)-dprdnh001(nfou)*
-     &   cdexp(xi*xkxn(nfou)*zf)      
+c      dprdnh001(0)=dprdnh001(0)-dprdnh001(nfou)*
+c     &   cdexp(xi*xkxn(nfou)*zf)      
       drrdnh001(nfou)=-(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*drrbnh(0)-drrbnh(nfou))
-      drrdnh001(0)=drrdnh001(0)-drrdnh001(nfou)*cdexp(xi*xkxn(nfou)*zf)
+c      drrdnh001(0)=drrdnh001(0)-drrdnh001(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
     
-      dppdn001(0)=dazf_zero*dppdn001(0)
-      dppdnh001(0)=dazf_zero*dppdnh001(0)
+c      dppdn001(0)=dazf_zero*dppdn001(0)
+c      dppdnh001(0)=dazf_zero*dppdnh001(0)
       
-      dprdn001(0)=dazf_zero*dprdn001(0)
-      dprdnh001(0)=dazf_zero*dprdnh001(0)
+c      dprdn001(0)=dazf_zero*dprdn001(0)
+c      dprdnh001(0)=dazf_zero*dprdnh001(0)
       
-      drrdn001(0)=dazf_zero*drrdn001(0)
-      drrdnh001(0)=dazf_zero*drrdnh001(0)
+c      drrdn001(0)=dazf_zero*drrdn001(0)
+c      drrdnh001(0)=dazf_zero*drrdnh001(0)
       
       return
       end
@@ -1721,84 +1720,96 @@ c--------------------------------
       subroutine ddddndnh001      
 c--------------------------------      
       include 'STGFM.cmn' 
+
+      dpppdn001(0)=0.5d0*(s1+s2)*dpppbn(0)
+      dpppdnh001(0)=-0.5d0*(s1+s2)*dpppbnh(0)
+ 
+      dpprdn001(0)=0.5d0*(s1+s2)*dpprbn(0)
+      dpprdnh001(0)=-0.5d0*(s1+s2)*dpprbnh(0)
+
+      dprrdn001(0)=0.5d0*(s1+s2)*dprrbn(0)
+      dprrdnh001(0)=-0.5d0*(s1+s2)*dprrbnh(0)   
+   
+      drrrdn001(0)=0.5d0*(s1+s2)*drrrbn(0)
+      drrrdnh001(0)=-0.5d0*(s1+s2)*drrrbnh(0)
    
 c------ dritte Ableitungen nach phi und r
 
       do nfou=-iord,-1
       dpppdn001(nfou)=(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*dpppbn(0)-dpppbn(nfou))     
-      dpppdn001(0)=dpppdn001(0)-dpppdn001(nfou)*cdexp(xi*xkxn(nfou)*zf)
+c      dpppdn001(0)=dpppdn001(0)-dpppdn001(nfou)*cdexp(xi*xkxn(nfou)*zf)
       dpprdn001(nfou)=(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*dpprbn(0)-dpprbn(nfou))     
-      dpprdn001(0)=dpprdn001(0)-dpprdn001(nfou)*cdexp(xi*xkxn(nfou)*zf)
+c      dpprdn001(0)=dpprdn001(0)-dpprdn001(nfou)*cdexp(xi*xkxn(nfou)*zf)
       dprrdn001(nfou)=(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*dprrbn(0)-dprrbn(nfou))
-      dprrdn001(0)=dprrdn001(0)-dprrdn001(nfou)*cdexp(xi*xkxn(nfou)*zf) 
+c      dprrdn001(0)=dprrdn001(0)-dprrdn001(nfou)*cdexp(xi*xkxn(nfou)*zf) 
       drrrdn001(nfou)=(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*drrrbn(0)-drrrbn(nfou))     
-      drrrdn001(0)=drrrdn001(0)-drrrdn001(nfou)*cdexp(xi*xkxn(nfou)*zf)
+c      drrrdn001(0)=drrrdn001(0)-drrrdn001(nfou)*cdexp(xi*xkxn(nfou)*zf)
  
       dpppdnh001(nfou)=-(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*dpppbnh(0)-dpppbnh(nfou))
-      dpppdnh001(0)=dpppdnh001(0)-
-     &    dpppdnh001(nfou)*cdexp(xi*xkxn(nfou)*zf)            
+c      dpppdnh001(0)=dpppdnh001(0)-
+c     &    dpppdnh001(nfou)*cdexp(xi*xkxn(nfou)*zf)            
       dpprdnh001(nfou)=-(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*dpprbnh(0)-dpprbnh(nfou))
-      dpprdnh001(0)=dpprdnh001(0)-
-     &    dpprdnh001(nfou)*cdexp(xi*xkxn(nfou)*zf) 
+c      dpprdnh001(0)=dpprdnh001(0)-
+c     &    dpprdnh001(nfou)*cdexp(xi*xkxn(nfou)*zf) 
       dprrdnh001(nfou)=-(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*dprrbnh(0)-dprrbnh(nfou))           
-      dprrdnh001(0)=dprrdnh001(0)-dprrdnh001(nfou)*
-     &   cdexp(xi*xkxn(nfou)*zf)      
+c      dprrdnh001(0)=dprrdnh001(0)-dprrdnh001(nfou)*
+c     &   cdexp(xi*xkxn(nfou)*zf)      
       drrrdnh001(nfou)=-(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*drrrbnh(0)-drrrbnh(nfou))
-      drrrdnh001(0)=drrrdnh001(0)-
-     &    drrrdnh001(nfou)*cdexp(xi*xkxn(nfou)*zf) 
+c      drrrdnh001(0)=drrrdnh001(0)-
+c     &    drrrdnh001(nfou)*cdexp(xi*xkxn(nfou)*zf) 
       enddo
 
       do nfou=1,iord
       dpppdn001(nfou)=(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*dpppbn(0)-dpppbn(nfou))     
-      dpppdn001(0)=dpppdn001(0)-dpppdn001(nfou)*cdexp(xi*xkxn(nfou)*zf)
+c      dpppdn001(0)=dpppdn001(0)-dpppdn001(nfou)*cdexp(xi*xkxn(nfou)*zf)
       dpprdn001(nfou)=(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*dpprbn(0)-dpprbn(nfou))     
-      dpprdn001(0)=dpprdn001(0)-dpprdn001(nfou)*cdexp(xi*xkxn(nfou)*zf)
+c      dpprdn001(0)=dpprdn001(0)-dpprdn001(nfou)*cdexp(xi*xkxn(nfou)*zf)
       dprrdn001(nfou)=(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*dprrbn(0)-dprrbn(nfou))
-      dprrdn001(0)=dprrdn001(0)-dprrdn001(nfou)*cdexp(xi*xkxn(nfou)*zf) 
+c      dprrdn001(0)=dprrdn001(0)-dprrdn001(nfou)*cdexp(xi*xkxn(nfou)*zf) 
       drrrdn001(nfou)=(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*drrrbn(0)-drrrbn(nfou))     
-      drrrdn001(0)=drrrdn001(0)-drrrdn001(nfou)*cdexp(xi*xkxn(nfou)*zf)
+c      drrrdn001(0)=drrrdn001(0)-drrrdn001(nfou)*cdexp(xi*xkxn(nfou)*zf)
  
       dpppdnh001(nfou)=-(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*dpppbnh(0)-dpppbnh(nfou))
-      dpppdnh001(0)=dpppdnh001(0)-
-     &    dpppdnh001(nfou)*cdexp(xi*xkxn(nfou)*zf)            
+c      dpppdnh001(0)=dpppdnh001(0)-
+c     &    dpppdnh001(nfou)*cdexp(xi*xkxn(nfou)*zf)            
       dpprdnh001(nfou)=-(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*dpprbnh(0)-dpprbnh(nfou))
-      dpprdnh001(0)=dpprdnh001(0)-
-     &    dpprdnh001(nfou)*cdexp(xi*xkxn(nfou)*zf) 
+c      dpprdnh001(0)=dpprdnh001(0)-
+c     &    dpprdnh001(nfou)*cdexp(xi*xkxn(nfou)*zf) 
       dprrdnh001(nfou)=-(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*dprrbnh(0)-dprrbnh(nfou))           
-      dprrdnh001(0)=dprrdnh001(0)-dprrdnh001(nfou)*
-     &   cdexp(xi*xkxn(nfou)*zf)      
+c      dprrdnh001(0)=dprrdnh001(0)-dprrdnh001(nfou)*
+c     &   cdexp(xi*xkxn(nfou)*zf)      
       drrrdnh001(nfou)=-(xi/xkxn(nfou))*
      &   (cdexp(-xi*xkxn(nfou)*s1)*drrrbnh(0)-drrrbnh(nfou))
-      drrrdnh001(0)=drrrdnh001(0)-
-     &    drrrdnh001(nfou)*cdexp(xi*xkxn(nfou)*zf) 
+c      drrrdnh001(0)=drrrdnh001(0)-
+c     &    drrrdnh001(nfou)*cdexp(xi*xkxn(nfou)*zf) 
       enddo     
 
-      dpppdn001(0)=dazf_zero*dpppdn001(0)
-      dpppdnh001(0)=dazf_zero*dpppdnh001(0)
+c      dpppdn001(0)=dazf_zero*dpppdn001(0)
+c      dpppdnh001(0)=dazf_zero*dpppdnh001(0)
  
-      dpprdn001(0)=dazf_zero*dpprdn001(0)
-      dpprdnh001(0)=dazf_zero*dpprdnh001(0)
+c      dpprdn001(0)=dazf_zero*dpprdn001(0)
+c      dpprdnh001(0)=dazf_zero*dpprdnh001(0)
 
-      dprrdn001(0)=dazf_zero*dprrdn001(0)
-      dprrdnh001(0)=dazf_zero*dprrdnh001(0)   
+c      dprrdn001(0)=dazf_zero*dprrdn001(0)
+c      dprrdnh001(0)=dazf_zero*dprrdnh001(0)   
    
-      drrrdn001(0)=dazf_zero*drrrdn001(0)
-      drrrdnh001(0)=dazf_zero*drrrdnh001(0)   
+c      drrrdn001(0)=dazf_zero*drrrdn001(0)
+c      drrrdnh001(0)=dazf_zero*drrrdnh001(0)   
             
       return
       end
@@ -3451,7 +3462,7 @@ c-------------------------------------------
 
       facex(0)=0.d0
       
-      do nfou=-2*iord,-1
+      do nfou=-iord,-1
       facex(nfou)=
      &  (cdexp(xi*xkxn(nfou)*z0)-
      &  cdexp(xi*xkxn(nfou)*zf))/(xi*xkxn(nfou))
@@ -3971,7 +3982,7 @@ c-------------------------------------------
 c-------------------------------------------
 c     Imaginärteile der fqpk sind alle null wie es sein soll
 c-------------------------------------------
-      include 'STGFM.cmn'      
+      include 'STGFM.cmn'   
     
       f101=eta101(0)*(z0-zf)
       f011=eta011(0)*(z0-zf)      
@@ -3982,9 +3993,9 @@ c-------------------------------------------
       f021=eta021(0)*(z0-zf)    
       f202=eta202(0)*(z0-zf)    
       f112=eta112(0)*(z0-zf)         
-      f022=eta022(0)*(z0-zf) 
-      
-      do nfou=-iord,iord
+      f022=eta022(0)*(z0-zf)       
+
+      do nfou=-iord,iord   ! facex(0) = 0
         f101=f101+facex(nfou)*eta101(nfou)
         f011=f011+facex(nfou)*eta011(nfou)  
         f111=f111+facex(nfou)*eta111(nfou)  
@@ -3995,7 +4006,7 @@ c-------------------------------------------
         f202=f202+facex(nfou)*eta202(nfou)     
         f112=f112+facex(nfou)*eta112(nfou)
         f022=f022+facex(nfou)*eta022(nfou) 
-      enddo      
+      enddo
 
       if(iverbose.eq.1)then
       write(6,*)'----------------------------------'

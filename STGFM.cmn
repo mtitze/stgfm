@@ -184,7 +184,7 @@
      & x202,x112,x022,y202,y112,y022,
      & aclin,cclin,             
      &   ap(0:30),aph(0:30),
-     &   apn(0:30,0:30),apnh(0:30,0:30),    
+     &   apn(0:300,0:300),apnh(0:300,0:300),    
      &   xmo,mo,mp0,
      & pxf0,pyf0,pxf1,pyf1,pxf2,pyf2
       common/fourier/s1,s2,xl,z0,zf,xlint,

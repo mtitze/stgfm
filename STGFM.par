@@ -1,5 +1,5 @@
 1.7	! energy in GeV
-25	! iord for exponentials
+50	! iord for exponentials
 2       ! multipole order (1=dipole, 2=quadrupole etc)
 0.0, 0.195 ! integration interval (meter)
 1
@@ -9,5 +9,5 @@ quad_long_9mm_cos_sin.res ! file name of Fourier coefficients
 0.009   ! reference radius for Fourier decomposition (m)
 25   ! number of Fourier coef. for longitudinal exp.; c0 is always included!
 0    ! igf set generating function development {2, 12, 22} 
-2.0    ! atrack :Faktor um Resonanz zu erhalten.
+5.0   ! atrack :Faktor um Resonanz zu erhalten.
 1    ! number of steps
