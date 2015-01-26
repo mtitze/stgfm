@@ -33,7 +33,7 @@
      & dprrdn001,dprrdnh001,drrrdn001,drrrdnh001,
      & dpppbn,dpppbnh,dpprbn,dpprbnh,
      & dprrbn,dprrbnh,drrrbn,drrrbnh,
-     & dazf_zero,ppoint,rpoint
+     & dazf_zero
 			  
 	  real*8 pi,small,scal,x00,xp00,y00,yp00,dphi,phi,
      & x0l,xp0l,y0l,yp0l,x0,xp0,y0,yp0,z0min,z0,z0max,dz0,
@@ -58,7 +58,7 @@
      & dflotj
 
 	  integer ireverse,ilinear,i_only_c0,iverbose,imode,iloop,
-     & ianzi,ii,kloop,mo,mp0,nfour,iord,ifile,nfou,nn,ip,ianzgm0,
+     & i_readjust,ii,kloop,mo,mp0,nfour,iord,ifile,nfou,nn,ip,ianzgm0,
      & i,ifacult,m,igf,ifldzero,isinoff,i_old,iwbnbnh,itwo_steps
 
       character*80 dfile,fcfile
@@ -90,7 +90,7 @@
      & aclin,cclin       
 	    
       common/checks/zz(1001),Gm0(1001)
-      common/const/xi,xpi,gamma,scal,dazf_zero,ppoint,rpoint
+      common/const/xi,xpi,gamma,scal,dazf_zero
       common/names/fcfile
 	  common/mult1/cn(-30:30),
      &   cnt(0:30),snt(0:30),cnr(0:30),cni(0:30),
@@ -192,6 +192,6 @@
      &   denom_new(-600:600),
      &   r00,pxflin,pyflin,
      &   f101,f011,f111,f012,f102,f201,f021,f202,f022,f112,	 
-     &   nfour,iord,iverbose,ilinear,ianzi,
+     &   nfour,iord,iverbose,ilinear,i_readjust,
      &   i_only_c0,igf,ifldzero,isinoff,i_old,ireverse,itwo_steps
       common/tracking/atrack

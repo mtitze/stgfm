@@ -20,7 +20,7 @@ c-------------------------------------------------------------------------------
       real*8 x0ll,y0ll,xp0ll,yp0ll
       real*8 xfll,yfll,xpfll,ypfll
       real*8 bx,by,bz,r_loc,phi_loc,z_loc,xx,xlint0
-      integer isteps
+      integer isteps,i_new_fields
       
       dimension z0s(10000),xpfs(10000),xpfs0(10000)              
       dimension x0l(10001),xp0l(10001),y0l(10001),yp0l(10001)
@@ -42,11 +42,12 @@ c------------- initialize
 c      dazf_zero=0.d0  ! 1: vector potential Axf Ayf = 0 (old case)
                       ! 0: Axf Ayf /= 0
       iwbnbnh=1
+      i_new_fields=1
 
       call get_input
         if(ireverse.eq.1)scal=-scal              
       call cn_from_cntsnt_new_JB 
-        if(ianzi.eq.1)call readjust_iinterval  
+        if(i_readjust.eq.1)call readjust_iinterval  
       call get_Gm0 
       call scal_cn      ! include stiffness of beam              
       call apnapnh            
@@ -245,9 +246,17 @@ c-------- Felder und 1., 2., 3. Ableitung
 c      write(6,*)' r0, phi0 ',r0,phi0
          
       call bnbnh(r0,phi0)
-      call dbnbnh(r0,phi0)
-      call ddbnbnh(r0,phi0) 
-      call dddbnbnh(r0,phi0)  
+
+      if(i_new_fields.eq.1)then
+        call drrrbnbnh_JB(r0,phi0)
+        call dbnbnh_JB(r0,phi0)
+        call ddbnbnh_JB(r0,phi0)
+        call dddbnbnh_JB(r0,phi0)
+      else
+        call dbnbnh(r0,phi0)
+        call ddbnbnh(r0,phi0)
+        call dddbnbnh(r0,phi0)
+      endif 
       
 c--------- erste Ordnung
 c     hier werden nur bn und bnh und deren Ableitungen verwendet
@@ -305,7 +314,6 @@ c-----------------------------------------
 
       call zerobsdbs
 c      call zerodsdds
-c      call zeroesdes
 
       call bnbnh(rf,phif)     
       call dndnh001(rf,phif)
@@ -729,7 +737,7 @@ c--------------------------------
       read(10,*)mo      ! multipole order (1=dipole, 2=quadrupole etc)
         xmo=mo
       read(10,*)z0,zf   ! integration interval
-      read(10,*)ianzi
+      read(10,*)i_readjust
       read(10,*)s1,s2   ! expansion interval for Fourier coefficients
         xlint=zf-z0     ! length of multipole including fringe fields
         xl=s2-s1        ! 1st harmonic period for 
@@ -1356,6 +1364,242 @@ c      write(6,*)' drrrbn(0),  drrrbnh(0)  ',drrrbn(0), drrrbnh(0)
       return
       end
       
+c------------------------------------------------------------------------------        
+      subroutine drrrbnbnh_JB(r,phi)
+c------------------------------------------------------------------------------   
+c
+c     sin(m phi), cos(m phi) are impemented at this point
+c
+c------------------------------------------------------------------------------   
+      include 'STGFM.cmn'
+      complex*16 facc,si,sx,cx,ff1,ffh1,ff2,ffh2,ff3,ffh3    
+      real*8 rr
+ 
+      sx=dsin(xmo*phi)     
+      cx=dcos(xmo*phi) 
+      
+      if((mo-2).ge.0)then
+        ff1=dfloat(mo-1)*sx
+        ffh1=dfloat(mo-1)*cx      
+      else
+        ff1=0.d0
+        ffh1=0.d0       
+      endif
+      
+      drbn(0) =(ff1/dfloat(ifacult(mo-1)))*cn(0)*r**(mo-2)
+      drbnh(0)=(ffh1/dfloat(ifacult(mo-1)))*cn(0)*r**(mo-2)
+      
+      if((mo-3).ge.0)then
+        ff2=dfloat(mo-1)*dfloat(mo-2)*sx
+        ffh2=dfloat(mo-1)*dfloat(mo-2)*cx        
+      else
+        ff2=0.d0
+        ffh2=0.d0        
+      endif
+      
+      drrbn(0) =(ff2/dfloat(ifacult(mo-1)))*cn(0)*r**(mo-3)
+      drrbnh(0)=(ffh2/dfloat(ifacult(mo-1)))*cn(0)*r**(mo-3)
+      
+      if((mo-4).ge.0)then
+        ff3=dfloat(mo-1)*dfloat(mo-2)*dfloat(mo-3)*sx
+        ffh3=dfloat(mo-1)*dfloat(mo-2)*dfloat(mo-3)*cx       
+      else
+        ff3=0.d0
+        ffh3=0.d0        
+      endif
+      
+      drrrbn(0) =(ff3/dfloat(ifacult(mo-1)))*cn(0)*r**(mo-4)
+      drrrbnh(0)=(ffh3/dfloat(ifacult(mo-1)))*cn(0)*r**(mo-4)
+      
+      do nfou=1,nfour
+      drbn(nfou)=0.d0
+      drbnh(nfou)=0.d0
+
+      drrbn(nfou)=0.d0
+      drrbnh(nfou)=0.d0
+      
+      drrrbn(nfou)=0.d0
+      drrrbnh(nfou)=0.d0
+
+      facc=cn(nfou)  
+      
+      do ip=0,mp0
+      
+      if((2*ip+mo-2).ge.0)then
+        ff1=dfloat(2*ip+mo-1)*sx
+        ffh1=dfloat(2*ip+mo-1)*cx      
+      else
+        ff1=0.d0
+        ffh1=0.d0       
+      endif     
+      
+      rr=r**(2*ip+mo-2)
+      drbn(nfou)=drbn(nfou)+ff1*apn(ip,nfou)*rr
+      drbnh(nfou)=drbnh(nfou)+ffh1*apnh(ip,nfou)*rr
+      
+      if((2*ip+mo-3).ge.0)then
+        ff2=dfloat(2*ip+mo-1)*dfloat(2*ip+mo-2)*sx
+        ffh2=dfloat(2*ip+mo-1)*dfloat(2*ip+mo-2)*cx      
+      else
+        ff2=0.d0
+        ffh2=0.d0       
+      endif           
+          
+      rr=rr/r
+      drrbn(nfou)=drrbn(nfou)+ff2*apn(ip,nfou)*rr
+      drrbnh(nfou)=drrbnh(nfou)+ffh2*apnh(ip,nfou)*rr       
+ 
+      if((2*ip+mo-4).ge.0)then
+        ff3=dfloat(2*ip+mo-1)*dfloat(2*ip+mo-2)*dfloat(2*ip+mo-3)*sx
+        ffh3=dfloat(2*ip+mo-1)*dfloat(2*ip+mo-2)*dfloat(2*ip+mo-3)*cx
+      else
+        ff3=0.d0
+        ffh3=0.d0       
+      endif                
+       
+      rr=rr/r
+      drrrbn(nfou)=drrrbn(nfou)+ff3*apn(ip,nfou)*rr
+      drrrbnh(nfou)=drrrbnh(nfou)+ffh3*apnh(ip,nfou)*rr
+
+      enddo
+                  
+      drbn(nfou)=drbn(nfou)*facc        
+      drbnh(nfou)=drbnh(nfou)*facc          
+
+      drrbn(nfou)=drrbn(nfou)*facc        
+      drrbnh(nfou)=drrbnh(nfou)*facc 
+      
+      drrrbn(nfou)=drrrbn(nfou)*facc        
+      drrrbnh(nfou)=drrrbnh(nfou)*facc                      
+
+      drbn(-nfou)=dconjg(drbn(nfou))    
+      drbnh(-nfou)=dconjg(drbnh(nfou))      
+      
+      drrbn(-nfou)=dconjg(drrbn(nfou))    
+      drrbnh(-nfou)=dconjg(drrbnh(nfou))  
+
+      drrrbn(-nfou)=dconjg(drrrbn(nfou))    
+      drrrbnh(-nfou)=dconjg(drrrbnh(nfou))
+      enddo
+      
+      return      
+      end            
+
+c--------------------------------        
+      subroutine dbnbnh_JB(r,phi)      
+c-------------------------------- 
+c
+c     missing sin(m*phi), cos(m*phi) are implenmeted 
+c
+c---------------------------------     
+      include 'STGFM.cmn'      
+
+      do nfou=-nfour,nfour
+       
+c      write(6,*)' dbn nfou ',nfou
+c      write(6,*)' neu ',drbn(nfou)
+c      drbn(nfou)=(xmo/r)*dsin(xmo*phi)*
+c     &  (1.d0+(xkxn(nfou)*r)**2/xmo**2)*bnh(nfou)-
+c     &  (bn(nfou)*dsin(xmo*phi))/r          
+c      write(6,*)' alt ',drbn(nfou)
+c      write(6,*)'-----'
+      
+      dphibn(nfou)=xmo*dcos(xmo*phi)*bn(nfou)
+      
+c      write(6,*)' dbnh nfou ',nfou
+c      write(6,*)' neu ',drbnh(nfou)      
+
+c      drbnh(nfou)=-(bnh(nfou)/r)*dcos(xmo*phi)+
+c     &  xmo*dcos(xmo*phi)*(bn(nfou)/r)      
+      
+c      write(6,*)' alt ',drbnh(nfou)
+c      write(6,*)'-----'
+      
+      dphibnh(nfou)=-xmo*dsin(xmo*phi)*bnh(nfou) 
+      
+      enddo
+      
+      return 
+      end      
+
+c--------------------------------        
+      subroutine ddbnbnh_JB(r,phi)      
+c-------------------------------- 
+c
+c     missing sin(m*phi), cos(m*phi) are implemented
+c     avoid numeric simulations with big numbers
+c
+c---------------------------------     
+      include 'STGFM.cmn'      
+      complex*16 tmp,sx,cx
+      real*8 small_loc1
+ 
+      small_loc1=1.d-12
+      
+      sx=dsin(xmo*phi)     
+      cx=dcos(xmo*phi)       
+      
+      do nfou=-nfour,nfour
+      dppbn(nfou)=-dsin(xmo*phi)*xmo**2*bn(nfou)
+      dppbnh(nfou)=-dcos(xmo*phi)*xmo**2*bnh(nfou)      
+      
+      if(abs(sx).gt.small_loc1)then
+          dprbn(nfou)=drbn(nfou)*(cx/sx)*xmo
+      else
+          dprbn(nfou)=0.d0
+      endif
+
+      if(abs(cx).gt.small_loc1)then
+          dprbnh(nfou)=drbnh(nfou)*(-sx/cx)*xmo
+      else
+          dprbnh(nfou)=0.d0
+      endif      
+      
+      enddo
+      
+      return 
+      end      
+
+c--------------------------------        
+      subroutine dddbnbnh_JB(r,phi)      
+c-------------------------------- 
+c
+c     missing sin(m*phi), cos(m*phi) are implenmeted 
+c
+c---------------------------------     
+      include 'STGFM.cmn'      
+      complex*16 tmp,sx,cx
+      real*8 small_loc1
+ 
+      small_loc1=1.d-12
+      
+      sx=dsin(xmo*phi)     
+      cx=dcos(xmo*phi)       
+      
+      do nfou=-nfour,nfour
+      dpppbnh(nfou)=-xmo**2*dphibnh(nfou)
+      dpppbn(nfou)=-xmo**2*dphibn(nfou)      
+      
+      dpprbn(nfou)=-xmo**2*drbn(nfou)
+      dpprbnh(nfou)=-xmo**2*drbnh(nfou)
+  
+      if(abs(sx).gt.small_loc1)then
+        dprrbn(nfou)=xmo*drrbn(nfou)*(cx/sx)
+      else
+        dprrbn(nfou)=0.d0
+      endif
+      
+      if(abs(cx).gt.small_loc1)then      
+        dprrbnh(nfou)=xmo*drrbnh(nfou)*(-sx/cx)      
+      else
+        dprrbnh(nfou)=0.d0
+      endif
+      
+      enddo
+      
+      return
+      end
+
 c--------------------------------        
       subroutine zerodsdds      
 c--------------------------------      
