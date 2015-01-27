@@ -32,8 +32,7 @@
      & dpppdn001,dpppdnh001,dpprdn001,dpprdnh001,
      & dprrdn001,dprrdnh001,drrrdn001,drrrdnh001,
      & dpppbn,dpppbnh,dpprbn,dpprbnh,
-     & dprrbn,dprrbnh,drrrbn,drrrbnh,
-     & dazf_zero
+     & dprrbn,dprrbnh,drrrbn,drrrbnh
 			  
 	  real*8 pi,small,scal,x00,xp00,y00,yp00,dphi,phi,
      & x0l,xp0l,y0l,yp0l,x0,xp0,y0,yp0,z0min,z0,z0max,dz0,
@@ -60,7 +59,7 @@
 	  integer ireverse,ilinear,i_only_c0,iverbose,imode,iloop,
      & i_readjust,ii,kloop,mo,mp0,nfour,iord,ifile,nfou,nn,ip,ianzgm0,
      & i,ifacult,m,igf,ifldzero,isinoff,i_old,iwbnbnh,
-     & itwo_steps,iverdat
+     & itwo_steps,iverdat,bz_zf_off
 
       character*80 dfile,fcfile
 	  complex*16 cn,xi,xm1,Gm0,bn,bnh,
@@ -91,7 +90,7 @@
      & aclin,cclin       
 	    
       common/checks/zz(1001),Gm0(1001)
-      common/const/xi,xpi,gamma,scal,dazf_zero
+      common/const/xi,xpi,gamma,scal,bz_zf_off
       common/names/fcfile
 	  common/mult1/cn(-30:30),
      &   cnt(0:30),snt(0:30),cnr(0:30),cni(0:30),
