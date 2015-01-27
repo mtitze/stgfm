@@ -30,6 +30,8 @@ c-------------------------------------------------------------------------------
 c------------- initialize
       Pi=4.d0*datan(1.d0)
       small=1.d0-10
+      iverdat=0    ! set this to one just before any dndnh001-call to
+                   ! write down the corresponding data at this point
       ireverse=0   ! 1: change sign of all fields
       ilinear=0     ! 1: X002=0, Y002=0
                     ! 10: X002=0, Y002=0 & X011=X101=Y011=Y101=0
@@ -44,10 +46,8 @@ c      dazf_zero=0.d0  ! 1: vector potential Axf Ayf = 0 (old case)
       iwbnbnh=1
       i_new_fields=1
 
-      call get_input
-        if(ireverse.eq.1)scal=-scal              
-      call cn_from_cntsnt_new_JB 
-        if(i_readjust.eq.1)call readjust_iinterval  
+      call get_input              
+      call cn_from_cntsnt_new_JB   
       call get_Gm0 
       call scal_cn      ! include stiffness of beam              
       call apnapnh            
@@ -260,7 +260,9 @@ c      write(6,*)' r0, phi0 ',r0,phi0
       
 c--------- erste Ordnung
 c     hier werden nur bn und bnh und deren Ableitungen verwendet
-      
+
+      iverdat=1      
+
       call dndnh001(r0,phi0)
       call ddndnh001  
       call dddndnh001
@@ -757,7 +759,8 @@ c      write(6,*)' nfour input = ',nfour
       read(10,*)itwo_steps
       close(10)
 
-      scal=scal
+      if(ireverse.eq.1)scal=-scal
+      if(i_readjust.eq.1)call readjust_iinterval     
 
       do nfou=0,100
         cnt(nfou)=0.d0
@@ -789,6 +792,27 @@ c------------ del sin-terms for test purposes
 
       return      
       end   
+
+c------------------------------------        
+      subroutine get_xkxn     
+c------------------------------------
+      include 'STGFM.cmn'
+
+      xl=s2-s1
+      xpi=4.d0*datan(1.d0)
+      xkx0=(2.d0*xpi)/xl
+
+      xkxn(0)=0.d0
+      xkxn2(0)=0.d0
+      do nfou=1,iord
+        xkxn(nfou)=xkx0*dfloat(nfou)
+        xkxn2(nfou)=xkxn(nfou)*xkxn(nfou)
+        xkxn(-nfou)=-xkxn(nfou)
+        xkxn2(-nfou)=xkxn2(nfou)
+      enddo 
+
+      return
+      end
 
 c------------------------------------        
       subroutine readjust_iinterval     
@@ -843,6 +867,9 @@ c------------------------------------
       
       func=-za
       dfunc=-1.d0
+
+      call get_xkxn
+
       do nfou=1,iord
       func=func+(2.d0/xkxn(nfou))*(
      &  dsin(xkxn(nfou)*s1)*dcos(xkxn(nfou)*za)-
@@ -860,23 +887,14 @@ c------------------------------------
 c------------------------------------      
       include 'STGFM.cmn'      
       dimension deno(0:20)
-      xpi=4.d0*datan(1.d0)
       r02=r00*r00
-      xkx0=(2.d0*xpi)/xl
-      
+
       deno(0)=2.d0*(r00**(mo-1)) ! Achtung: m! kürzt sich weg  
       cnr(0)=cnt(0)/(deno(0)/2.d0)
       cni(0)=0.d0
       cn(0)=cnr(0)+xi*cni(0)
       
-      xkxn(0)=0.d0
-      xkxn2(0)=0.d0
-      do nfou=1,iord
-        xkxn(nfou)=xkx0*dfloat(nfou)
-        xkxn2(nfou)=xkxn(nfou)*xkxn(nfou)
-        xkxn(-nfou)=-xkxn(nfou)
-        xkxn2(-nfou)=xkxn2(nfou)
-      enddo          
+      call get_xkxn     
       
       do ip=1,mp0
         deno(ip)=deno(ip-1)*(r02/dfloat(4*(mo+ip)*ip))*xkxn2(ip)      
@@ -913,23 +931,14 @@ c------------------------------------
 c------------------------------------      
       include 'STGFM.cmn'      
       dimension deno(0:20)
-      xpi=4.d0*datan(1.d0)
       r02=r00*r00
-      xkx0=(2.d0*xpi)/xl
       
       deno(0)=2.d0*(r00**(mo-1)) ! Achtung: m! kürzt sich weg  
       cnr(0)=cnt(0)/(deno(0)/2.d0)
       cni(0)=0.d0
       cn(0)=cnr(0)+xi*cni(0)
       
-      xkxn(0)=0.d0
-      xkxn2(0)=0.d0
-      do nfou=1,iord
-        xkxn(nfou)=xkx0*dfloat(nfou)
-        xkxn2(nfou)=xkxn(nfou)*xkxn(nfou)
-        xkxn(-nfou)=-xkxn(nfou)
-        xkxn2(-nfou)=xkxn2(nfou)
-      enddo          
+      call get_xkxn
       
 c      do ip=1,mp0
 cc        deno(ip)=deno(ip-1)*(r02/dfloat(4*(mo+ip)*ip))*xkxn2(ip)  
@@ -972,10 +981,7 @@ c------------------------------------
 c------------------------------------      
       include 'STGFM.cmn'  
       dimension deno(0:20)
-      
-      xpi=4.d0*datan(1.d0)
       r02=r00*r00
-      xkx0=(2.d0*xpi)/xl
       
       deno(0)=xmo*(r00**(mo-1))
       cnr(0)=cnt(0)/(deno(0)/dfloat(ifacult(mo)))
@@ -983,14 +989,7 @@ c------------------------------------
       cni(0)=0.d0
       cn(0)=cnr(0)+xi*cni(0)
       
-      xkxn(0)=0.d0
-      xkxn2(0)=0.d0
-      do nfou=1,iord
-        xkxn(nfou)=xkx0*dfloat(nfou)
-        xkxn2(nfou)=xkxn(nfou)*xkxn(nfou)
-        xkxn(-nfou)=-xkxn(nfou)
-        xkxn2(-nfou)=xkxn2(nfou)
-      enddo   
+      call get_xkxn
 
       do ip=1,mp0
         deno(ip)=deno(ip-1)*(r02/dfloat(4*(mo+ip)*ip))      
@@ -1827,7 +1826,18 @@ c      dnh001(0)=dnh001(0)-dnh001(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo            
 
 c      dn001(0)=dazf_zero*dn001(0)
-c      dnh001(0)=dazf_zero*dnh001(0)            
+c      dnh001(0)=dazf_zero*dnh001(0)  
+
+      if((iverbose.eq.1).and.(iverdat.eq.1))then
+        iverdat=0
+        write(6,*)' writing dn001(n) and dnh001(n) to dndnhd.dat'
+        open(unit=10,file='dndnh.dat')
+        do i=-iord,iord
+        write(10,*)dn001(i),dnh001(i)   
+        enddo 
+        close(10)
+      endif
+    
       return
       end    
 

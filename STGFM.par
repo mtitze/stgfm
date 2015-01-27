@@ -1,6 +1,6 @@
 1.7	! energy in GeV
 25	! iord for exponentials
-2       ! multipole order (1=dipole, 2=quadrupole etc)
+1       ! multipole order (1=dipole, 2=quadrupole etc)
 0.0, 0.195 ! integration interval (meter)
 1
 -0.2,0.2 ! expansion interval for Fourier decomposition

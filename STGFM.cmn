@@ -59,7 +59,8 @@
 
 	  integer ireverse,ilinear,i_only_c0,iverbose,imode,iloop,
      & i_readjust,ii,kloop,mo,mp0,nfour,iord,ifile,nfou,nn,ip,ianzgm0,
-     & i,ifacult,m,igf,ifldzero,isinoff,i_old,iwbnbnh,itwo_steps
+     & i,ifacult,m,igf,ifldzero,isinoff,i_old,iwbnbnh,
+     & itwo_steps,iverdat
 
       character*80 dfile,fcfile
 	  complex*16 cn,xi,xm1,Gm0,bn,bnh,
@@ -192,6 +193,6 @@
      &   denom_new(-600:600),
      &   r00,pxflin,pyflin,
      &   f101,f011,f111,f012,f102,f201,f021,f202,f022,f112,	 
-     &   nfour,iord,iverbose,ilinear,i_readjust,
+     &   nfour,iord,iverbose,ilinear,i_readjust,iverdat,
      &   i_only_c0,igf,ifldzero,isinoff,i_old,ireverse,itwo_steps
       common/tracking/atrack
