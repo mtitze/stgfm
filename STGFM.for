@@ -46,14 +46,20 @@ c      dazf_zero=0.d0  ! 1: vector potential Axf Ayf = 0 (old case)
       iwbnbnh=1
       i_new_fields=1
 
-      call get_input              
+      call get_input
+      if(ireverse.eq.1)scal=-scal
+
+      call get_xkxn
+      if(i_readjust.eq.1)call readjust_iinterval     
+              
       call cn_from_cntsnt_new_JB   
-      call get_Gm0 
-      call scal_cn      ! include stiffness of beam              
+      call scal_cn      ! include stiffness of beam
+
+      call get_Gm0               
       call apnapnh            
       call facexp  
        
-      call get_psi
+c      call get_psi
       
 c------------- putting numbers      
 c     imode   = 0: single point
@@ -759,9 +765,6 @@ c      write(6,*)' nfour input = ',nfour
       read(10,*)itwo_steps
       close(10)
 
-      if(ireverse.eq.1)scal=-scal
-      if(i_readjust.eq.1)call readjust_iinterval     
-
       do nfou=0,100
         cnt(nfou)=0.d0
         snt(nfou)=0.d0
@@ -868,8 +871,6 @@ c------------------------------------
       func=-za
       dfunc=-1.d0
 
-      call get_xkxn
-
       do nfou=1,iord
       func=func+(2.d0/xkxn(nfou))*(
      &  dsin(xkxn(nfou)*s1)*dcos(xkxn(nfou)*za)-
@@ -893,8 +894,6 @@ c------------------------------------
       cnr(0)=cnt(0)/(deno(0)/2.d0)
       cni(0)=0.d0
       cn(0)=cnr(0)+xi*cni(0)
-      
-      call get_xkxn     
       
       do ip=1,mp0
         deno(ip)=deno(ip-1)*(r02/dfloat(4*(mo+ip)*ip))*xkxn2(ip)      
@@ -937,8 +936,6 @@ c------------------------------------
       cnr(0)=cnt(0)/(deno(0)/2.d0)
       cni(0)=0.d0
       cn(0)=cnr(0)+xi*cni(0)
-      
-      call get_xkxn
       
 c      do ip=1,mp0
 cc        deno(ip)=deno(ip-1)*(r02/dfloat(4*(mo+ip)*ip))*xkxn2(ip)  
@@ -988,8 +985,6 @@ c------------------------------------
 
       cni(0)=0.d0
       cn(0)=cnr(0)+xi*cni(0)
-      
-      call get_xkxn
 
       do ip=1,mp0
         deno(ip)=deno(ip-1)*(r02/dfloat(4*(mo+ip)*ip))      
