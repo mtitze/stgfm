@@ -35,15 +35,15 @@ c------------- initialize
       ireverse=0   ! 1: change sign of all fields
       ilinear=0     ! 1: X002=0, Y002=0
                     ! 10: X002=0, Y002=0 & X011=X101=Y011=Y101=0
-      i_only_c0=1   ! 1: use only c0 Fourier coefficent 
+      i_only_c0=0   ! 1: use only c0 Fourier coefficent 
       
       ifldzero=0    ! 1: field is turned off 
-      isinoff=1     ! 1: no sin-terms in longitudinal expansion
+      isinoff=0     ! 1: no sin-terms in longitudinal expansion
       i_old=0       ! 1: old code
-      iverbose=1  
+      iverbose=0  
 c      dazf_zero=0.d0  ! 1: vector potential Axf Ayf = 0 (old case)
                       ! 0: Axf Ayf /= 0
-      iwbnbnh=1
+      iwbnbnh=0
       i_new_fields=1
 
       call get_input
@@ -1825,7 +1825,7 @@ c      dnh001(0)=dazf_zero*dnh001(0)
 
       if((iverbose.eq.1).and.(iverdat.eq.1))then
         iverdat=0
-        write(6,*)' writing dn001(n) and dnh001(n) to dndnhd.dat'
+        write(6,*)' writing dn001(n) and dnh001(n) to dndnh.dat'
         open(unit=10,file='dndnh.dat')
         do i=-iord,iord
         write(10,*)dn001(i),dnh001(i)   
