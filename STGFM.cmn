@@ -59,7 +59,7 @@
 	  integer ireverse,ilinear,i_only_c0,iverbose,imode,iloop,
      & i_readjust,ii,kloop,mo,mp0,nfour,iord,ifile,nfou,nn,ip,ianzgm0,
      & i,ifacult,m,igf,ifldzero,isinoff,i_old,iwbnbnh,
-     & itwo_steps,iverdat,bz_zf_off
+     & itwo_steps,iverdat,bz_zf_off,igf_kord,iord0
 
       character*80 dfile,fcfile
 	  complex*16 cn,xi,xm1,Gm0,bn,bnh,
@@ -92,8 +92,8 @@
       common/checks/zz(1001),Gm0(1001)
       common/const/xi,xpi,gamma,scal,bz_zf_off
       common/names/fcfile
-	  common/mult1/cn(-30:30),
-     &   cnt(0:30),snt(0:30),cnr(0:30),cni(0:30),
+	  common/mult1/cn(-300:300),
+     &   cnt(0:300),snt(0:300),cnr(0:300),cni(0:300),
      &   bn(-300:300),bnh(-300:300),
      &   drbn(-300:300),dphibn(-300:300),
      &   drbnh(-300:300),dphibnh(-300:300),
@@ -194,4 +194,4 @@
      &   f101,f011,f111,f012,f102,f201,f021,f202,f022,f112,	 
      &   nfour,iord,iverbose,ilinear,i_readjust,iverdat,
      &   i_only_c0,igf,ifldzero,isinoff,i_old,ireverse,itwo_steps
-      common/tracking/atrack
+      common/tracking/atrack,igf_kord,iord0

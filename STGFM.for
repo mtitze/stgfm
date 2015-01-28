@@ -49,13 +49,16 @@ c------------- initialize
       call get_input
       if(ireverse.eq.1)scal=-scal
 
+c readjust_iinterval and fdf only operate with iord0
       call get_xkxn
-      if(i_readjust.eq.1)call readjust_iinterval     
-              
-      call cn_from_cntsnt_new_JB   
-      call scal_cn      ! include stiffness of beam
+      if(i_readjust.eq.1)call readjust_iinterval 
+c z0 and zf are set after this point
 
-      call get_Gm0               
+c initialize lowest level values with extended order
+      call get_xkxn    
+      call cn_from_cntsnt_new   
+      call scal_cn      ! include stiffness of beam
+      call get_Gm0  
       call apnapnh            
       call facexp  
        
@@ -71,7 +74,9 @@ c     imode   = 5: starting with x0, y0, tracking many turns
 
 1000  imode=0
 c      imode=1234
-      write(6,*)' imode, igf mode = ',imode,igf
+
+      write(6,*)' max energy order = ',igf_kord-1
+      write(6,*)' imode, igf mode  = ',imode,igf
       write(6,*)'-------------------------'      
 
 c      if(imode.eq.1234)then
@@ -223,16 +228,10 @@ c======================= start 3D-multipole ========================
        z0=0.d0
        zf=zf0
       endif
-c      call facexp
+      call facexp
       endif
 
       call facexp
-
-c      write(6,*)'*** PRE cn(0) ', cn(0)
-c      call cn_from_cntsnt_new_JB
-c      call scal_cn    ! call cn_from_cntsnt_new_JB only
-c                      ! together with scal_cn
-c      write(6,*)'*** PAST cn(0) ', cn(0)
 
       write(6,*)'  '
       write(6,*)' start multipole segment ',isteps
@@ -242,15 +241,16 @@ c      write(6,*)'*** PAST cn(0) ', cn(0)
       write(6,*)' x0, y0 (mm) ',(1000.d0)*x0,(1000.d0)*y0
       write(6,*)' xp0, yp0 (mrad) ',(1000.d0)*xp0,(1000.d0)*yp0
      
+c ---- initialisiere mit erweiterter Ordnung
+
       call zerobsdbs               
       call zerodsdds        
-      call zeroesdes 
+      call zeroesdes
            
-c-------- Felder und 1., 2., 3. Ableitung
-      call cartesian2polar(x0,y0,r0,phi0)  
-      
-c      write(6,*)' r0, phi0 ',r0,phi0
-         
+      call cartesian2polar(x0,y0,r0,phi0) 
+c-------- Felder und 1., 2., 3. Ableitung 
+c--------- erste Ordnung     
+
       call bnbnh(r0,phi0)
 
       if(i_new_fields.eq.1)then
@@ -263,19 +263,16 @@ c      write(6,*)' r0, phi0 ',r0,phi0
         call ddbnbnh(r0,phi0)
         call dddbnbnh(r0,phi0)
       endif 
-      
-c--------- erste Ordnung
-c     hier werden nur bn und bnh und deren Ableitungen verwendet
 
-      iverdat=1      
+      iverdat=1   ! small switch to write some data to file  
 
       call dndnh001(r0,phi0)
       call ddndnh001  
       call dddndnh001
       call ddddndnh001
       
-c--------- zweite Ordnung
-      
+c--------- zweite Ordnung    
+
       call eta2(r0,phi0)    ! Verwendung von dn001 und dnh001
       call deta2(r0,phi0)   ! Verwendung von ddn001 und ddnh001
       call ddeta2(r0,phi0)  ! Verwendung von dddn001 und dddnh001
@@ -294,12 +291,11 @@ c--------- dritte Ordnung
       call ddndnh3(r0,phi0)  
 
 c--------- vierte Ordnung
-      
+
       call eta4(r0,phi0)
       call deta4(r0,phi0)  
       
 c-----------------------------------------
-
       call get_fqpk
 
       call gx(r0,phi0)  ! groß x
@@ -325,7 +321,6 @@ c      call zerodsdds
 
       call bnbnh(rf,phif)     
       call dndnh001(rf,phif)
-
       call get_AxAy(rf,phif,zf,Axf,Ayf)
       
       xpf=pxf-Axf        ! Achtung xpf = pxf und ypf = pyf
@@ -741,7 +736,7 @@ c--------------------------------
         scal=(gamma*emass*speed)/echarge    
         write(6,*)' Brho = ',scal
         
-      read(10,*)iord    ! expansion order of exponentials
+      read(10,*)iord0    ! expansion order of exponentials
       read(10,*)mo      ! multipole order (1=dipole, 2=quadrupole etc)
         xmo=mo
       read(10,*)z0,zf   ! integration interval
@@ -764,6 +759,28 @@ c      write(6,*)' nfour input = ',nfour
       read(10,*)atrack  ! additional factor for all elements in imode = 5   
       read(10,*)itwo_steps
       close(10)
+
+c igf will change for higher orders in k (igf_kord), 
+c since higher orders require more lower terms. The lowest terms outside of igf0
+c must be initialized to zero
+      iord=iord0
+
+c igf_kord denotes the maximal order in k (energy) for each case.
+c if the order in energy is j, then
+c we need +-j*iord0 summands in the j'th order
+      if(igf.eq.2)then
+      igf_kord=2
+      elseif(igf.eq.11)then
+      igf_kord=1
+      elseif(igf.eq.21)then
+      igf_kord=1
+      elseif(igf.eq.12)then
+      igf_kord=2
+      elseif(igf.eq.22)then
+      igf_kord=2
+      elseif(igf.eq.0)then
+      igf_kord=3
+      endif           
 
       do nfou=0,100
         cnt(nfou)=0.d0
@@ -801,6 +818,8 @@ c------------------------------------
 c------------------------------------
       include 'STGFM.cmn'
 
+      iord=iord0*igf_kord
+
       xl=s2-s1
       xpi=4.d0*datan(1.d0)
       xkx0=(2.d0*xpi)/xl
@@ -822,8 +841,8 @@ c------------------------------------
 c------------------------------------      
       include 'STGFM.cmn'      
 
-      small_loc=0.05d0*((s2-s1)/dfloat(iord))
-      dd=(s2-s1)/dfloat(4*iord)
+      small_loc=0.05d0*((s2-s1)/dfloat(iord0))
+      dd=(s2-s1)/dfloat(4*iord0)
       
 c----- ajust left boundary z0
       z00=z0
@@ -857,9 +876,13 @@ c     write(6,*)' right ',delta
       if(dabs(delta).gt.1.d-15)goto 200
       zf=za
       write(6,*)' old / new zf = ',zf0,zf
+      if(iverbose.eq.1)then
+      write(6,*)' readjust_iinterval: z represented up to order', iord0
+      endif
       write(6,*)'-------------------------'      
       xlint=zf-z0
-      
+
+
       return
       end
 
@@ -871,7 +894,7 @@ c------------------------------------
       func=-za
       dfunc=-1.d0
 
-      do nfou=1,iord
+      do nfou=1,iord0
       func=func+(2.d0/xkxn(nfou))*(
      &  dsin(xkxn(nfou)*s1)*dcos(xkxn(nfou)*za)-
      &  dcos(xkxn(nfou)*s1)*dsin(xkxn(nfou)*za))
@@ -928,42 +951,40 @@ c------------------------------------
 c------------------------------------        
       subroutine cn_from_cntsnt_new     
 c------------------------------------      
-      include 'STGFM.cmn'      
+      include 'STGFM.cmn'  
       dimension deno(0:20)
+
       r02=r00*r00
-      
-      deno(0)=2.d0*(r00**(mo-1)) ! Achtung: m! kürzt sich weg  
-      cnr(0)=cnt(0)/(deno(0)/2.d0)
+      deno(0)=xmo*(r00**(mo-1))
+
+      cnr(0)=cnt(0)/(deno(0)/dfloat(ifacult(mo)))
       cni(0)=0.d0
+
       cn(0)=cnr(0)+xi*cni(0)
-      
-c      do ip=1,mp0
-cc        deno(ip)=deno(ip-1)*(r02/dfloat(4*(mo+ip)*ip))*xkxn2(ip)  
-c         deno(ip)+r02**ip/dfloat(4**ip*ifacult(mo+ip)*ifacult(ip))*xkxn2(nfou)**ip    
-c      enddo
-      
-      do nfou=1,nfour
-      denom_new(nfou)=0.d0
-      do ip=0,mp0
-        denom_new(nfou)=denom_new(nfou)+r02**(ip+mo-1)/
-     &  dfloat(4**ip*ifacult(mo+ip)*ifacult(ip))*xkxn2(nfou)**ip 
+c initialize cn's with zeros for n!=0, 300 is hard-coded in .cmn
+      do nfou=1,300
+        cn(-nfou)=0.d0
+        cn(nfou)=0.d0
       enddo
-      enddo
-      denom_new(0)=r00**(mo-1)/dfloat(ifacult(mo-1))
 
-      do nfou=0,nfour        
-        cnr(nfou)=cnt(nfou)/denom_new(nfou)
-c        cni(nfou)=-snt(nfou)/denom   ! ueblicherw.: imag = cos + i*sin, nicht '-'
-        cni(nfou)=snt(nfou)/denom_new(nfou)
-        cn(nfou)=cnr(nfou)+xi*cni(nfou)
-        cn(-nfou)=dconjg(cn(nfou))               
+      do ip=1,mp0
+        deno(ip)=deno(ip-1)*(r02/dfloat(4*(mo+ip)*ip))      
       enddo
-      
-      do nfou=-nfour,nfour
-      if((i_only_c0.eq.1).and.(nfou.ne.0))cn(nfou)=0.d0
-      enddo      
+      if(i_only_c0.ne.1)then
+c overwrite cn's from -nfour to nfour
+        do nfou=1,nfour
+        denom=0.d0
+        do ip=0,mp0
+          denom=denom+deno(ip)*xkxn2(nfou)**ip
+        enddo
+          cnr(nfou)=cnt(nfou)/denom
+          cni(nfou)=-snt(nfou)/denom
+          cn(nfou)=cnr(nfou)+xi*cni(nfou)
+          cn(-nfou)=dconjg(cn(nfou))          
+        enddo
+      endif  
 
-      if(iverbose.eq.1)write(6,*)'writing CN*r00 to CN.DAT ',nfour  
+      if(iverbose.eq.1)write(6,*)'writing CN*r00 to CN.DAT ',nfour
       open(unit=10,file='CN.DAT',status='unknown')    
       do nfou=-nfour,nfour
       write(10,*)nfou,r00*cn(nfou)
@@ -971,7 +992,7 @@ c        cni(nfou)=-snt(nfou)/denom   ! ueblicherw.: imag = cos + i*sin, nicht '
       close(10)
       
       return      
-      end         
+      end       
 
 c------------------------------------        
       subroutine cn_from_cntsnt_new_JB     
@@ -1020,7 +1041,7 @@ c--------------------------------
       subroutine get_Gm0     
 c--------------------------------      
       include 'STGFM.cmn'    
-      
+     
       ianzGm0=401
       zmin=z0
       dz=xlint/dfloat(ianzGm0-1)
@@ -1051,7 +1072,7 @@ c------------------------------------------
 c------------------------------------------      
 
       include 'STGFM.cmn'   
-      
+
       do nfou=-nfour,nfour
         cn(nfou)=cn(nfou)/scal     
       enddo
@@ -1168,6 +1189,8 @@ c
 c------------------------------------------------------------------------------   
       include 'STGFM.cmn'
       complex*16 facc,si    
+
+      iord=iord0*igf_kord
       
       r2=r*r
       
@@ -1221,6 +1244,8 @@ c     missing sin(m*phi), cos(m*phi) are implenmeted
 c
 c---------------------------------     
       include 'STGFM.cmn'      
+    
+      iord=iord0*igf_kord
 
       do nfou=-iord,iord
       drbn(nfou)=(xmo/r)*dsin(xmo*phi)*
@@ -1246,6 +1271,8 @@ c---------------------------------
       complex*16 tmp
       real*8 small_loc1
  
+      iord=iord0*igf_kord
+
       small_loc1=1.d-12
       
       do nfou=-iord,iord
@@ -1303,6 +1330,8 @@ c---------------------------------
       complex*16 tmp
       real*8 small_loc1
  
+      iord=iord0*igf_kord
+
       small_loc1=1.d-12
       
       do nfou=-iord,iord
@@ -1368,6 +1397,8 @@ c------------------------------------------------------------------------------
       include 'STGFM.cmn'
       complex*16 facc,si,sx,cx,ff1,ffh1,ff2,ffh2,ff3,ffh3    
       real*8 rr
+
+      iord=iord0*igf_kord
  
       sx=dsin(xmo*phi)     
       cx=dcos(xmo*phi) 
@@ -1405,7 +1436,7 @@ c------------------------------------------------------------------------------
       drrrbn(0) =(ff3/dfloat(ifacult(mo-1)))*cn(0)*r**(mo-4)
       drrrbnh(0)=(ffh3/dfloat(ifacult(mo-1)))*cn(0)*r**(mo-4)
       
-      do nfou=1,nfour
+      do nfou=1,iord
       drbn(nfou)=0.d0
       drbnh(nfou)=0.d0
 
@@ -1488,7 +1519,9 @@ c
 c---------------------------------     
       include 'STGFM.cmn'      
 
-      do nfou=-nfour,nfour
+      iord=iord0*igf_kord
+ 
+      do nfou=-iord,iord
        
 c      write(6,*)' dbn nfou ',nfou
 c      write(6,*)' neu ',drbn(nfou)
@@ -1528,12 +1561,14 @@ c---------------------------------
       complex*16 tmp,sx,cx
       real*8 small_loc1
  
+      iord=iord0*igf_kord
+
       small_loc1=1.d-12
       
       sx=dsin(xmo*phi)     
       cx=dcos(xmo*phi)       
       
-      do nfou=-nfour,nfour
+      do nfou=-iord,iord
       dppbn(nfou)=-dsin(xmo*phi)*xmo**2*bn(nfou)
       dppbnh(nfou)=-dcos(xmo*phi)*xmo**2*bnh(nfou)      
       
@@ -1565,12 +1600,14 @@ c---------------------------------
       complex*16 tmp,sx,cx
       real*8 small_loc1
  
+      iord=iord0*igf_kord
+
       small_loc1=1.d-12
       
       sx=dsin(xmo*phi)     
       cx=dcos(xmo*phi)       
       
-      do nfou=-nfour,nfour
+      do nfou=-iord,iord
       dpppbnh(nfou)=-xmo**2*dphibnh(nfou)
       dpppbn(nfou)=-xmo**2*dphibn(nfou)      
       
@@ -1598,6 +1635,8 @@ c--------------------------------
       subroutine zerodsdds      
 c--------------------------------      
       include 'STGFM.cmn'      
+
+      iord=iord0*igf_kord
 
       do nfou=-iord,iord
       dn001(nfou)=0.d0
@@ -1709,6 +1748,8 @@ c--------------------------------
 c--------------------------------      
       include 'STGFM.cmn'      
 
+      iord=iord0*igf_kord
+
       do nfou=-iord,iord
       eta101(nfou)=0.d0
       eta011(nfou)=0.d0
@@ -1802,6 +1843,8 @@ c---------------------------------
       dn001(0)=0.5d0*(s1+s2)*bn(0)
       dnh001(0)=-0.5d0*(s1+s2)*bnh(0)
       
+      iord=iord0
+
       do nfou=-iord,-1
       dn001(nfou)=(xi/xkxn(nfou))*dsin(xmo*phi)*
      &   (cdexp(-xi*xkxn(nfou)*s1)*bn(0)-bn(nfou))     
@@ -1849,6 +1892,8 @@ c--------------------------------
          
       dphidn001(0)=0.5d0*(s1+s2)*dphibn(0)
       dphidnh001(0)=-0.5d0*(s1+s2)*dphibnh(0)
+
+      iord=iord0
 
       do nfou=-iord,-1
       drdn001(nfou)=(xi/xkxn(nfou))*
@@ -1909,6 +1954,8 @@ c--------------------------------
       
       drrdn001(0)=0.5d0*(s1+s2)*drrbn(0)
       drrdnh001(0)=-0.5d0*(s1+s2)*drrbnh(0)
+
+      iord=iord0
 
       do nfou=-iord,-1
       dppdn001(nfou)=(xi/xkxn(nfou))*
@@ -1994,6 +2041,8 @@ c--------------------------------
       drrrdnh001(0)=-0.5d0*(s1+s2)*drrrbnh(0)
    
 c------ dritte Ableitungen nach phi und r
+
+      iord=iord0
 
       do nfou=-iord,-1
       dpppdn001(nfou)=(xi/xkxn(nfou))*
@@ -2086,12 +2135,16 @@ c--------------------------------
 
       ds=dsin(phi)
       dc=dcos(phi)
+  
+      iord=iord0
+
       do nfou=-iord,iord
       eta101(nfou)=-dc*dnh001(nfou)+ds*dn001(nfou)
       eta011(nfou)=-ds*dnh001(nfou)-dc*dn001(nfou)
       enddo
       
-      do nfou=-iord,iord
+      
+      do nfou=-iord*2,iord*2
       do m=-iord,iord
        if(iabs(nfou-m).le.iord)then
        eta002(nfou)=eta002(nfou)-0.5d0*(
@@ -2112,7 +2165,9 @@ c--------------------------------
 c--------------------------------        
       subroutine deta2(r,phi)      
 c--------------------------------      
-      include 'STGFM.cmn'           
+      include 'STGFM.cmn'   
+
+      iord=iord0        
 
       do nfou=-iord,iord
       dreta101(nfou)=-dcos(phi)*drdnh001(nfou)+dsin(phi)*drdn001(nfou)
@@ -2122,7 +2177,7 @@ c      if(iverbose.eq.1)write(6,*)' dreta011 ',nfou,dreta011(nfou)
       enddo 
 
 c     write(6,*)'ini dreta002(0), dreta002(1) ',dreta002(0), dreta002(1)
-      do nfou=-iord,iord      
+      do nfou=-iord*2,iord*2      
       do m=-iord,iord
         if(iabs(nfou-m).le.iord)then
         dreta002(nfou)=dreta002(nfou)-0.5d0*(
@@ -2140,7 +2195,7 @@ c      if(iverbose.eq.1)write(6,*)' dphieta101 ',nfou,dphieta101(nfou)
      &   dsin(phi)*dphidnh001(nfou)-dcos(phi)*dphidn001(nfou)
       enddo
       
-      do nfou=-iord,iord   
+      do nfou=-iord*2,iord*2   
       do m=-iord,iord
         if(iabs(nfou-m).le.iord)then
         dphieta002(nfou)=dphieta002(nfou)-0.5d0*(
@@ -2157,6 +2212,8 @@ c--------------------------------
       subroutine ddeta2(r,phi)      
 c--------------------------------      
       include 'STGFM.cmn'           
+
+      iord=iord0
 
       do nfou=-iord,iord
       drreta101(nfou)=-dcos(phi)*drrdnh001(nfou)+
@@ -2178,7 +2235,7 @@ c--------------------------------
      &     dsin(phi)*dppdnh001(nfou)-dcos(phi)*dppdn001(nfou)      
       enddo
          
-      do nfou=-iord,iord      
+      do nfou=-iord*2,iord*2      
       do m=-iord,iord
         if(iabs(nfou-m).le.iord)then
         drreta002(nfou)=drreta002(nfou)-0.5d0*(
@@ -2230,6 +2287,7 @@ c--------------------------------
       include 'STGFM.cmn'           
 
 c--------- Ableitungen nach r      
+      iord=iord0
       
       do nfou=-iord,iord
       drrreta101(nfou)=-dcos(phi)*drrrdnh001(nfou)+
@@ -2262,7 +2320,7 @@ c      endif
      &     dsin(phi)*dpprdnh001(nfou)-dcos(phi)*dpprdn001(nfou)      
       enddo
          
-      do nfou=-iord,iord      
+      do nfou=-iord*2,iord*2      
       do m=-iord,iord
         if(iabs(nfou-m).le.iord)then
         drrreta002(nfou)=drrreta002(nfou)-0.5d0*(
@@ -2300,8 +2358,7 @@ c      endif
 
 c---------- Ableitungen nach phi
 
-       do nfou=-iord,iord
-  
+      do nfou=-iord,iord
       dpppeta101(nfou)=-dsin(phi)*dnh001(nfou)-dcos(phi)*dn001(nfou)+
      &     dcos(phi)*dphidnh001(nfou)-dsin(phi)*dphidn001(nfou)+
      &     dcos(phi)*dphidnh001(nfou)-dsin(phi)*dphidn001(nfou)+
@@ -2321,7 +2378,7 @@ c---------- Ableitungen nach phi
      &     dsin(phi)*dpppdnh001(nfou)-dcos(phi)*dpppdn001(nfou)    
       enddo
          
-      do nfou=-iord,iord      
+      do nfou=-iord*2,iord*2      
       do m=-iord,iord
         if(iabs(nfou-m).le.iord)then
         dpppeta002(nfou)=dpppeta002(nfou)-0.5d0*(
@@ -2344,7 +2401,9 @@ c---------- Ableitungen nach phi
 c-------------------------------------------
       subroutine dndnh2(r,phi)
 c-------------------------------------------     
-      include 'STGFM.cmn'           
+      include 'STGFM.cmn'  
+
+      iord=iord0         
 
       do nfou=-iord,-1
       dnh011(nfou)=(xi/xkxn(nfou))*
@@ -2396,13 +2455,13 @@ c---------------------------------
       dn101(0)=dn101(0)-dn101(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
       
-      do nfou=-iord,-1
+      do nfou=-iord*2,-1
       dnh002(nfou)=(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dreta002(0)-dreta002(nfou))
       dnh002(0)=dnh002(0)-dnh002(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
 
-      do nfou=1,iord
+      do nfou=1,iord*2
       dnh002(nfou)=(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dreta002(0)-dreta002(nfou))
       dnh002(0)=dnh002(0)-dnh002(nfou)*cdexp(xi*xkxn(nfou)*zf)
@@ -2410,13 +2469,13 @@ c---------------------------------
       
 c--------------------------------------------
 
-      do nfou=-iord,-1
+      do nfou=-2*iord,-1
       dn002(nfou)=(1.d0/r)*(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dphieta002(0)-dphieta002(nfou))
       dn002(0)=dn002(0)-dn002(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
 
-      do nfou=1,iord
+      do nfou=1,iord*2
       dn002(nfou)=(1.d0/r)*(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dphieta002(0)-dphieta002(nfou))
       dn002(0)=dn002(0)-dn002(nfou)*cdexp(xi*xkxn(nfou)*zf)
@@ -2432,7 +2491,9 @@ c--------------------------------
 
       ds=dsin(phi)
       dc=dcos(phi)
-      
+       
+      iord=iord0
+
       do nfou=-iord,iord
       eta111(nfou)=-dc*dnh011(nfou)+ds*dn011(nfou)-
      &              ds*dnh101(nfou)-dc*dn101(nfou)
@@ -2440,7 +2501,7 @@ c--------------------------------
       eta021(nfou)=-ds*dnh011(nfou)-dc*dn011(nfou)
       enddo    
       
-      do nfou=-iord,iord
+      do nfou=-2*iord,2*iord
       eta102(nfou)=-dcos(phi)*dnh002(nfou)+dsin(phi)*dn002(nfou)
       do m=-iord,iord
        if(iabs(nfou-m).le.iord)then
@@ -2454,9 +2515,8 @@ c--------------------------------
 c      write(6,*)' dn002(1) ',dn002(1)
 c      write(6,*)' dnh002(1) ',dnh002(1)  
 c      write(6,*)'-------------------------'
-      do nfou=-iord,iord
+      do nfou=-2*iord,2*iord
       eta012(nfou)=-dsin(phi)*dnh002(nfou)-dcos(phi)*dn002(nfou)
-      
       do m=-iord,iord
        if(iabs(nfou-m).le.iord)then
          eta012(nfou)=eta012(nfou)-0.5d0*(
@@ -2470,9 +2530,9 @@ c       write(6,*)'   ',nfou,dreal(eta012(nfou)),dimag(eta012(nfou))
 c      endif
       enddo 
  
-      do nfou=-iord,iord
-      do m=-iord,iord
-       if(iabs(nfou-m).le.iord)then
+      do nfou=-3*iord,3*iord
+      do m=-2*iord,2*iord
+       if(iabs(nfou-m).le.2*iord)then
          eta003(nfou)=eta003(nfou)-0.5d0*(
      &   dnh001(m)*dnh002(nfou-m)+dnh002(m)*dnh001(nfou-m)+
      &   dn001(m)*dn002(nfou-m)+dn002(m)*dn001(nfou-m))
@@ -2491,6 +2551,8 @@ c--------------------------------
       ds=dsin(phi)
       dc=dcos(phi)
 
+      iord=iord0
+
       do nfou=-iord,iord
       dreta111(nfou)=-dc*drdnh011(nfou)+ds*drdn011(nfou)-
      &                ds*drdnh101(nfou)-dc*drdn101(nfou)
@@ -2507,7 +2569,7 @@ c--------------------------------
      &                dc*dnh011(nfou)+ds*dn011(nfou)         
       enddo
       
-      do nfou=-iord,iord       
+      do nfou=-2*iord,2*iord       
       dreta102(nfou)=-dc*drdnh002(nfou)+ds*drdn002(nfou)
       dreta012(nfou)=-ds*drdnh002(nfou)-dc*drdn002(nfou)
       dpeta102(nfou)=-dc*dpdnh002(nfou)+ds*dpdn002(nfou)+
@@ -2528,10 +2590,10 @@ c--------------------------------
       dppeta012(nfou)=-ds*dppdnh002(nfou)-dc*dppdn002(nfou)- 
      &   dc*dpdnh002(nfou)+ds*dpdn002(nfou)        
      &                -dc*dpdnh002(nfou)+ds*dpdn002(nfou)+ 
-     &   ds*dnh002(nfou)+dc*dn002(nfou)        
-       
+     &   ds*dnh002(nfou)+dc*dn002(nfou)
+      enddo        
 c----- 2. Ableitungen von eta201, eta111, eta021
-      
+      do nfou=-iord,iord             
 c----- Ableitungen nach r
       drreta111(nfou)=-dc*drrdnh011(nfou)+ds*drrdn011(nfou)-
      &                ds*drrdnh101(nfou)-dc*drrdn101(nfou)
@@ -2564,7 +2626,9 @@ c------ Ableitungen nach phi
      &                ds*dnh011(nfou)+dc*dn011(nfou)-               
      &                ds*dppdnh011(nfou)-dc*dppdn011(nfou)-     
      &                dc*dpdnh011(nfou)+ds*dpdn011(nfou)   
-      
+      enddo
+
+      do nfou=-2*iord,2*iord
       do m=-iord,iord
        if(iabs(nfou-m).le.iord)then
         dreta102(nfou)=dreta102(nfou)-0.5d0*(
@@ -2662,9 +2726,9 @@ c        endif
       enddo    
       
  
-      do nfou=-iord,iord
-      do m=-iord,iord
-       if(iabs(nfou-m).le.iord)then
+      do nfou=-3*iord,3*iord
+      do m=-2*iord,2*iord
+       if(iabs(nfou-m).le.2*iord)then
          dreta003(nfou)=dreta003(nfou)-0.5d0*(
      &   drdnh001(m)*dnh002(nfou-m)+drdnh002(m)*dnh001(nfou-m)+
      &   drdn001(m)*dn002(nfou-m)+drdn002(m)*dn001(nfou-m)+
@@ -2702,7 +2766,9 @@ c--------------------------------
       ds=dsin(phi) 
       dc=dcos(phi)     
  
-      do nfou=-iord,iord          
+      iord=iord0
+
+      do nfou=-2*iord,2*iord          
       eta202(nfou)=-dc*dnh102(nfou)+ds*dn102(nfou)         
       eta112(nfou)=-dc*dnh012(nfou)+ds*dn012(nfou)-
      &              ds*dnh102(nfou)-dc*dn102(nfou)  
@@ -2744,8 +2810,10 @@ c--------------------------------
       ds=dsin(phi) 
       dc=dcos(phi)     
 
+      iord=iord0
+
 c Ableitungen nach r      
-      do nfou=-iord,iord          
+      do nfou=-2*iord,2*iord          
       dreta202(nfou)=-dc*drdnh102(nfou)+ds*drdn102(nfou)         
       dreta112(nfou)=-dc*drdnh012(nfou)+ds*drdn012(nfou)-
      &              ds*drdnh102(nfou)-dc*drdn102(nfou)  
@@ -2795,7 +2863,7 @@ c      endif
 c      write(6,*)' dreta202(0) ',dreta202(0)
 
 c------ Ableitungen nach phi
-      do nfou=-iord,iord          
+      do nfou=-2*iord,2*iord          
       dpeta202(nfou)=ds*dnh102(nfou)+dc*dn102(nfou)-
      & dc*dpdnh102(nfou)+ds*dpdn102(nfou)
       
@@ -2810,17 +2878,7 @@ c      endif
       dpeta112(nfou)=ds*dnh012(nfou)+dc*dn012(nfou)-
      &               dc*dnh102(nfou)+ds*dn102(nfou)-
      &               dc*dpdnh012(nfou)+ds*dpdn012(nfou)-
-     &               ds*dpdnh102(nfou)-dc*dpdn102(nfou)       
-      if(nfou.eq.1)then 
-c          write(6,*)' term1 ',dn012(nfou)
-c          write(6,*)' term2',-dnh102(nfou)
-c          write(6,*)' term3 ',-dpdnh012(nfou)
-c          write(6,*)' term4 ',-dpdn102(nfou) 
-
-c          write(6,*)' dpeta112(1) ini ',dpeta112(1)
-c          write(6,*)' dpeta112(1)/r ini ',dpeta112(1)/r          
-      endif      
-      
+     &               ds*dpdnh102(nfou)-dc*dpdn102(nfou)
       dpeta022(nfou)=-dc*dnh012(nfou)+ds*dn012(nfou)-
      &                ds*dpdnh012(nfou)-dc*dpdn012(nfou) 
     
@@ -2871,6 +2929,8 @@ c-------------------------------------------
       complex*16 tmp
       real*8 small_loc1
       
+      iord=iord0
+
       small_loc1=1.d-12
       
       r3i=1.d0/r**3
@@ -2903,13 +2963,13 @@ c--------- einfache Ableitungen nach phi
       dpdnh101(0)=dpdnh101(0)-dpdnh101(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
   
-      do nfou=-iord,-1
+      do nfou=-2*iord,-1
       dpdnh002(nfou)=(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dpreta002(0)-dpreta002(nfou))
       dpdnh002(0)=dpdnh002(0)-dpdnh002(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
       
-      do nfou=1,iord
+      do nfou=1,iord*2
       dpdnh002(nfou)=(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dpreta002(0)-dpreta002(nfou))
       dpdnh002(0)=dpdnh002(0)-dpdnh002(nfou)*cdexp(xi*xkxn(nfou)*zf)
@@ -2940,13 +3000,13 @@ c---------------------------------
       dpdn101(0)=dpdn101(0)-dpdn101(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
 
-      do nfou=-iord,-1
+      do nfou=-2*iord,-1
       dpdn002(nfou)=(1.d0/r)*(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dppeta002(0)-dppeta002(nfou))
       dpdn002(0)=dpdn002(0)-dpdn002(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
       
-      do nfou=1,iord
+      do nfou=1,2*iord
       dpdn002(nfou)=(1.d0/r)*(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dppeta002(0)-dppeta002(nfou))
       dpdn002(0)=dpdn002(0)-dpdn002(nfou)*cdexp(xi*xkxn(nfou)*zf)
@@ -2977,13 +3037,13 @@ c------ einfache Ableitungen nach r
       drdnh101(0)=drdnh101(0)-drdnh101(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
       
-      do nfou=-iord,-1
+      do nfou=-2*iord,-1
       drdnh002(nfou)=(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*drreta002(0)-drreta002(nfou))     
       drdnh002(0)=drdnh002(0)-drdnh002(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
       
-      do nfou=1,iord
+      do nfou=1,2*iord
       drdnh002(nfou)=(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*drreta002(0)-drreta002(nfou))    
       drdnh002(0)=drdnh002(0)-drdnh002(nfou)*cdexp(xi*xkxn(nfou)*zf)
@@ -3018,14 +3078,14 @@ c---------------------------------
       drdn101(0)=drdn101(0)-drdn101(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
 
-      do nfou=-iord,-1
+      do nfou=-2*iord,-1
       drdn002(nfou)=(xi/xkxn(nfou))*(
      & -r2i*(cdexp(-xi*xkxn(nfou)*s1)*dphieta002(0)-dphieta002(nfou))+
      &  ri*(cdexp(-xi*xkxn(nfou)*s1)*dpreta002(0)-dpreta002(nfou)))     
       drdn002(0)=drdn002(0)-drdn002(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
       
-      do nfou=1,iord
+      do nfou=1,2*iord
       drdn002(nfou)=(xi/xkxn(nfou))*(
      & -r2i*(cdexp(-xi*xkxn(nfou)*s1)*dphieta002(0)-dphieta002(nfou))+
      &  ri*(cdexp(-xi*xkxn(nfou)*s1)*dpreta002(0)-dpreta002(nfou)))     
@@ -3059,13 +3119,13 @@ c--------- einfache Ableitungen nach phi
       dprdnh101(0)=dprdnh101(0)-dprdnh101(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
   
-      do nfou=-iord,-1
+      do nfou=-2*iord,-1
       dprdnh002(nfou)=(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dprreta002(0)-dprreta002(nfou))
       dprdnh002(0)=dprdnh002(0)-dprdnh002(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
       
-      do nfou=1,iord
+      do nfou=1,2*iord
       dprdnh002(nfou)=(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dprreta002(0)-dprreta002(nfou))
       dprdnh002(0)=dprdnh002(0)-dprdnh002(nfou)*cdexp(xi*xkxn(nfou)*zf)
@@ -3104,7 +3164,7 @@ c---------------------------------
       dprdn101(0)=dprdn101(0)-dprdn101(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
            
-      do nfou=-iord,-1
+      do nfou=-2*iord,-1
       dprdn002(nfou)=(-r2i)*(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dppeta002(0)-dppeta002(nfou))+
      &              (1.d0/r)*(xi/xkxn(nfou))*
@@ -3112,7 +3172,7 @@ c---------------------------------
       dprdn002(0)=dprdn002(0)-dprdn002(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
  
-      do nfou=1,iord
+      do nfou=1,2*iord
       dprdn002(nfou)=(-r2i)*(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dppeta002(0)-dppeta002(nfou))+
      &              (1.d0/r)*(xi/xkxn(nfou))*
@@ -3146,13 +3206,13 @@ c------ einfache Ableitungen nach r
       drrdnh101(0)=drrdnh101(0)-drrdnh101(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
       
-      do nfou=-iord,-1
+      do nfou=-2*iord,-1
       drrdnh002(nfou)=(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*drrreta002(0)-drrreta002(nfou))     
       drrdnh002(0)=drrdnh002(0)-drrdnh002(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
       
-      do nfou=1,iord
+      do nfou=1,2*iord
       drrdnh002(nfou)=(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*drrreta002(0)-drrreta002(nfou))     
       drrdnh002(0)=drrdnh002(0)-drrdnh002(nfou)*cdexp(xi*xkxn(nfou)*zf)
@@ -3199,7 +3259,7 @@ c---------------------------------
       drrdn101(0)=drrdn101(0)-drrdn101(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
       
-      do nfou=-iord,-1
+      do nfou=-2*iord,-1
       tmp=-ri*(cdexp(-xi*xkxn(nfou)*s1)*dpreta002(0)-dpreta002(nfou))+
      &  (cdexp(-xi*xkxn(nfou)*s1)*dprreta002(0)-dprreta002(nfou))+
      &  2.d0*r2i*(cdexp(-xi*xkxn(nfou)*s1)*
@@ -3209,7 +3269,7 @@ c---------------------------------
       drrdn002(0)=drrdn002(0)-drrdn002(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
       
-      do nfou=1,iord
+      do nfou=1,2*iord
       tmp=-ri*(cdexp(-xi*xkxn(nfou)*s1)*dpreta002(0)-dpreta002(nfou))+
      &  (cdexp(-xi*xkxn(nfou)*s1)*dprreta002(0)-dprreta002(nfou))+
      &  2.d0*r2i*(cdexp(-xi*xkxn(nfou)*s1)*
@@ -3246,13 +3306,13 @@ c--------- einfache Ableitungen nach phi
       dppdnh101(0)=dppdnh101(0)-dppdnh101(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
   
-      do nfou=-iord,-1
+      do nfou=-2*iord,-1
       dppdnh002(nfou)=(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dppreta002(0)-dppreta002(nfou))
       dppdnh002(0)=dppdnh002(0)-dppdnh002(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
       
-      do nfou=1,iord
+      do nfou=1,2*iord
       dppdnh002(nfou)=(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dppreta002(0)-dppreta002(nfou))
       dppdnh002(0)=dppdnh002(0)-dppdnh002(nfou)*cdexp(xi*xkxn(nfou)*zf)
@@ -3283,13 +3343,13 @@ c---------------------------------
       dppdn101(0)=dppdn101(0)-dppdn101(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
 
-      do nfou=-iord,-1
+      do nfou=-2*iord,-1
       dppdn002(nfou)=(1.d0/r)*(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dpppeta002(0)-dpppeta002(nfou))
       dppdn002(0)=dppdn002(0)-dppdn002(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
       
-      do nfou=1,iord
+      do nfou=1,2*iord
       dppdn002(nfou)=(1.d0/r)*(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dpppeta002(0)-dpppeta002(nfou))
       dppdn002(0)=dppdn002(0)-dppdn002(nfou)*cdexp(xi*xkxn(nfou)*zf)
@@ -3304,6 +3364,8 @@ c-------------------------------------------
       include 'STGFM.cmn'      
 
       ri=1.d0/r
+
+      iord=iord0
       
       do nfou=-iord,-1
       dnh201(nfou)=(xi/xkxn(nfou))*
@@ -3343,25 +3405,25 @@ c--
       enddo
    
 c--
-      do nfou=-iord,-1
+      do nfou=-2*iord,-1
       dnh102(nfou)=(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dreta102(0)-dreta102(nfou))
       dnh102(0)=dnh102(0)-dnh102(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
       
-      do nfou=1,iord
+      do nfou=1,2*iord
       dnh102(nfou)=(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dreta102(0)-dreta102(nfou))
       dnh102(0)=dnh102(0)-dnh102(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo     
 c--
-      do nfou=-iord,-1
+      do nfou=-2*iord,-1
       dnh012(nfou)=(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dreta012(0)-dreta012(nfou))
       dnh012(0)=dnh012(0)-dnh012(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
       
-      do nfou=1,iord
+      do nfou=1,2*iord
       dnh012(nfou)=(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dreta012(0)-dreta012(nfou))
       dnh012(0)=dnh012(0)-dnh012(nfou)*cdexp(xi*xkxn(nfou)*zf)
@@ -3406,26 +3468,26 @@ c--
       enddo
  
 c--
-      do nfou=-iord,-1
+      do nfou=-2*iord,-1
       dn102(nfou)=ri*(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dpeta102(0)-dpeta102(nfou))
       dn102(0)=dn102(0)-dn102(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
       
-      do nfou=1,iord
+      do nfou=1,2*iord
       dn102(nfou)=ri*(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dpeta102(0)-dpeta102(nfou))
       dn102(0)=dn102(0)-dn102(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
                 
 c--
-      do nfou=-iord,-1
+      do nfou=-2*iord,-1
       dn012(nfou)=ri*(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dpeta012(0)-dpeta012(nfou))
       dn012(0)=dn012(0)-dn012(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
       
-      do nfou=1,iord
+      do nfou=1,2*iord
       dn012(nfou)=ri*(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dpeta012(0)-dpeta012(nfou))
       dn012(0)=dn012(0)-dn012(nfou)*cdexp(xi*xkxn(nfou)*zf)
@@ -3441,6 +3503,8 @@ c-------------------------------------------
 
       ri=1.d0/r
       r2i=1.d0/r**2
+
+      iord=iord0
       
 c-------- Ableitungen nach phi
       do nfou=-iord,-1
@@ -3481,25 +3545,25 @@ c--
       enddo
    
 c--
-      do nfou=-iord,-1
+      do nfou=-2*iord,-1
       dpdnh102(nfou)=(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dpreta102(0)-dpreta102(nfou))
       dpdnh102(0)=dpdnh102(0)-dpdnh102(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
       
-      do nfou=1,iord
+      do nfou=1,2*iord
       dpdnh102(nfou)=(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dpreta102(0)-dpreta102(nfou))
       dpdnh102(0)=dpdnh102(0)-dpdnh102(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo     
 c--
-      do nfou=-iord,-1
+      do nfou=-2*iord,-1
       dpdnh012(nfou)=(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dpreta012(0)-dpreta012(nfou))
       dpdnh012(0)=dpdnh012(0)-dpdnh012(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
       
-      do nfou=1,iord
+      do nfou=1,2*iord
       dpdnh012(nfou)=(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dpreta012(0)-dpreta012(nfou))
       dpdnh012(0)=dpdnh012(0)-dpdnh012(nfou)*cdexp(xi*xkxn(nfou)*zf)
@@ -3544,25 +3608,25 @@ c--
       enddo
  
 c--
-      do nfou=-iord,-1
+      do nfou=-2*iord,-1
       dpdn102(nfou)=ri*(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dppeta102(0)-dppeta102(nfou))
       dpdn102(0)=dpdn102(0)-dpdn102(nfou)*cdexp(xi*xkxn(nfou)*zf)    
       enddo
       
-      do nfou=1,iord
+      do nfou=1,2*iord
       dpdn102(nfou)=ri*(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dppeta102(0)-dppeta102(nfou))
       dpdn102(0)=dpdn102(0)-dpdn102(nfou)*cdexp(xi*xkxn(nfou)*zf)       
       enddo    
 c--
-      do nfou=-iord,-1
+      do nfou=-2*iord,-1
       dpdn012(nfou)=ri*(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dppeta012(0)-dppeta012(nfou))
       dpdn012(0)=dpdn012(0)-dpdn012(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
       
-      do nfou=1,iord
+      do nfou=1,2*iord
       dpdn012(nfou)=ri*(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dppeta012(0)-dppeta012(nfou))
       dpdn012(0)=dpdn012(0)-dpdn012(nfou)*cdexp(xi*xkxn(nfou)*zf)
@@ -3607,25 +3671,25 @@ c--
       enddo
    
 c--
-      do nfou=-iord,-1
+      do nfou=-2*iord,-1
       drdnh102(nfou)=(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*drreta102(0)-drreta102(nfou))
       drdnh102(0)=drdnh102(0)-drdnh102(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
       
-      do nfou=1,iord
+      do nfou=1,2*iord
       drdnh102(nfou)=(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*drreta102(0)-drreta102(nfou))
       drdnh102(0)=drdnh102(0)-drdnh102(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo     
 c--
-      do nfou=-iord,-1
+      do nfou=-2*iord,-1
       drdnh012(nfou)=(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*drreta012(0)-drreta012(nfou))
       drdnh012(0)=drdnh012(0)-drdnh012(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
       
-      do nfou=1,iord
+      do nfou=1,2*iord
       drdnh012(nfou)=(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*drreta012(0)-drreta012(nfou))
       drdnh012(0)=drdnh012(0)-drdnh012(nfou)*cdexp(xi*xkxn(nfou)*zf)
@@ -3682,7 +3746,7 @@ c--
       enddo
  
 c--
-      do nfou=-iord,-1
+      do nfou=-2*iord,-1
       drdn102(nfou)=-r2i*(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dpeta102(0)-dpeta102(nfou))+
      &             ri*(xi/xkxn(nfou))*
@@ -3691,7 +3755,7 @@ c--
             
       enddo
       
-      do nfou=1,iord
+      do nfou=1,2*iord
       drdn102(nfou)=-r2i*(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dpeta102(0)-dpeta102(nfou))+
      &             ri*(xi/xkxn(nfou))*
@@ -3701,7 +3765,7 @@ c--
       enddo
                 
 c--
-      do nfou=-iord,-1
+      do nfou=-2*iord,-1
       drdn012(nfou)=-r2i*(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dpeta012(0)-dpeta012(nfou))+
      &             ri*(xi/xkxn(nfou))*
@@ -3709,7 +3773,7 @@ c--
       drdn012(0)=drdn012(0)-drdn012(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
       
-      do nfou=1,iord
+      do nfou=1,2*iord
       drdn012(nfou)=-r2i*(xi/xkxn(nfou))*
      &  (cdexp(-xi*xkxn(nfou)*s1)*dpeta012(0)-dpeta012(nfou))+
      &             ri*(xi/xkxn(nfou))*
@@ -3724,6 +3788,8 @@ c-------------------------------------------
       subroutine facexp 
 c-------------------------------------------
       include 'STGFM.cmn'      
+
+      iord=iord0*igf_kord
 
       facex(0)=0.d0
       
@@ -3742,7 +3808,9 @@ c-------------------------------------------
 c-------------------------------------------
       subroutine gx(r,phi) 
 c-------------------------------------------
-      include 'STGFM.cmn'      
+      include 'STGFM.cmn'
+
+      iord=iord0
 
       X011=(dcos(phi)*dreta011(0)-(dsin(phi)/r)*dphieta011(0))*(z0-zf)
       X101=(dcos(phi)*dreta101(0)-(dsin(phi)/r)*dphieta101(0))*(z0-zf)  
@@ -3770,30 +3838,35 @@ c      write(6,*)' x202 ini ',x202
      &  (dcos(phi)*dreta011(nfou)-(dsin(phi)/r)*dphieta011(nfou))
       X101=X101+facex(nfou)*
      &  (dcos(phi)*dreta101(nfou)-(dsin(phi)/r)*dphieta101(nfou))
-      X002=X002+facex(nfou)*
-     &  (dcos(phi)*dreta002(nfou)-(dsin(phi)/r)*dphieta002(nfou))
-      
-      X102=X102+facex(nfou)*
-     &  (dcos(phi)*dreta102(nfou)-(dsin(phi)/r)*dpeta102(nfou))
-      X012=X012+facex(nfou)*
-     &  (dcos(phi)*dreta012(nfou)-(dsin(phi)/r)*dpeta012(nfou)) 
       X201=X201+facex(nfou)*
      &  (dcos(phi)*dreta201(nfou)-(dsin(phi)/r)*dpeta201(nfou)) 
       X021=X021+facex(nfou)*
      &  (dcos(phi)*dreta021(nfou)-(dsin(phi)/r)*dpeta021(nfou))   
       X111=X111+facex(nfou)*
-     &  (dcos(phi)*dreta111(nfou)-(dsin(phi)/r)*dpeta111(nfou))        
-      X003=X003+facex(nfou)*
-     &  (dcos(phi)*dreta003(nfou)-(dsin(phi)/r)*dpeta003(nfou))  
+     &  (dcos(phi)*dreta111(nfou)-(dsin(phi)/r)*dpeta111(nfou)) 
+      enddo
+
+      do nfou=-2*iord,2*iord
+      X002=X002+facex(nfou)*
+     &  (dcos(phi)*dreta002(nfou)-(dsin(phi)/r)*dphieta002(nfou))      
+      X102=X102+facex(nfou)*
+     &  (dcos(phi)*dreta102(nfou)-(dsin(phi)/r)*dpeta102(nfou))
+      X012=X012+facex(nfou)*
+     &  (dcos(phi)*dreta012(nfou)-(dsin(phi)/r)*dpeta012(nfou))        
       
       X202=X202+facex(nfou)*
      &  (dcos(phi)*dreta202(nfou)-(dsin(phi)/r)*dpeta202(nfou))
-       X112=X202+facex(nfou)*
+      X112=X202+facex(nfou)*
      &  (dcos(phi)*dreta112(nfou)-(dsin(phi)/r)*dpeta112(nfou))       
       X022=X202+facex(nfou)*
      &  (dcos(phi)*dreta022(nfou)-(dsin(phi)/r)*dpeta022(nfou))       
       enddo
- 
+
+      do nfou=-3*iord,3*iord
+      X003=X003+facex(nfou)*
+     &  (dcos(phi)*dreta003(nfou)-(dsin(phi)/r)*dpeta003(nfou))  
+      enddo 
+
       if(iverbose.eq.1)then
       write(6,*)'-----------------'
       write(6,*)' x002 ',x002
@@ -3818,6 +3891,8 @@ c-------------------------------------------
 c-------------------------------------------
       include 'STGFM.cmn'      
 
+      iord=iord0
+
       Y011=(dsin(phi)*dreta011(0)+(dcos(phi)/r)*dphieta011(0))*(z0-zf)
       Y101=(dsin(phi)*dreta101(0)+(dcos(phi)/r)*dphieta101(0))*(z0-zf)
       Y002=(dsin(phi)*dreta002(0)+(dcos(phi)/r)*dphieta002(0))*(z0-zf)
@@ -3839,29 +3914,33 @@ c      write(6,*)' dpeta112 (0) ',dpeta112(0)
       Y011=Y011+facex(nfou)*
      &  (dsin(phi)*dreta011(nfou)+(dcos(phi)/r)*dphieta011(nfou))
       Y101=Y101+facex(nfou)*
-     &  (dsin(phi)*dreta101(nfou)+(dcos(phi)/r)*dphieta101(nfou)) 
-      Y002=Y002+facex(nfou)*
-     &  (dsin(phi)*dreta002(nfou)+(dcos(phi)/r)*dphieta002(nfou))
-      
-      Y102=Y102+facex(nfou)*
-     &  (dsin(phi)*dreta102(nfou)+(dcos(phi)/r)*dpeta102(nfou))
-      Y012=Y012+facex(nfou)*
-     &  (dsin(phi)*dreta012(nfou)+(dcos(phi)/r)*dpeta012(nfou))
+     &  (dsin(phi)*dreta101(nfou)+(dcos(phi)/r)*dphieta101(nfou))
       Y201=Y201+facex(nfou)*
      &  (dsin(phi)*dreta201(nfou)+(dcos(phi)/r)*dpeta201(nfou))    
       Y021=Y021+facex(nfou)*
      &  (dsin(phi)*dreta021(nfou)+(dcos(phi)/r)*dpeta021(nfou))   
       Y111=Y111+facex(nfou)*
-     &  (dsin(phi)*dreta111(nfou)+(dcos(phi)/r)*dpeta111(nfou))    
-      Y003=Y003+facex(nfou)*
-     &  (dsin(phi)*dreta003(nfou)+(dcos(phi)/r)*dpeta003(nfou))    
+     &  (dsin(phi)*dreta111(nfou)+(dcos(phi)/r)*dpeta111(nfou))
+      enddo
 
+      do nfou=-2*iord,2*iord 
+      Y002=Y002+facex(nfou)*
+     &  (dsin(phi)*dreta002(nfou)+(dcos(phi)/r)*dphieta002(nfou))      
+      Y102=Y102+facex(nfou)*
+     &  (dsin(phi)*dreta102(nfou)+(dcos(phi)/r)*dpeta102(nfou))
+      Y012=Y012+facex(nfou)*
+     &  (dsin(phi)*dreta012(nfou)+(dcos(phi)/r)*dpeta012(nfou))
       Y202=Y202+facex(nfou)*
      &  (dsin(phi)*dreta202(nfou)+(dcos(phi)/r)*dpeta202(nfou))  
       Y112=Y112+facex(nfou)*
      &  (dsin(phi)*dreta112(nfou)+(dcos(phi)/r)*dpeta112(nfou))
       Y022=Y022+facex(nfou)*
      &  (dsin(phi)*dreta022(nfou)+(dcos(phi)/r)*dpeta022(nfou))
+      enddo
+
+      do nfou=-3*iord,3*iord    
+      Y003=Y003+facex(nfou)*
+     &  (dsin(phi)*dreta003(nfou)+(dcos(phi)/r)*dpeta003(nfou))    
       enddo   
 
       if(iverbose.eq.1)then
@@ -3905,6 +3984,8 @@ c-------------------------------------------
       include 'STGFM.cmn'      
       complex*16 axc,ayc,draxc,dpaxc,dparc
       real*8 drax,dpax,dpar
+
+      iord=iord0
       
       Axc=0.d0
       Ayc=0.d0
@@ -3975,25 +4056,25 @@ c-------------------------------------------
       y01=y011
       y20=0.d0
       y11=0.d0
-      y02=0.d0     
+      y02=0.d0
       endif
 
       if(igf.eq.21)then
-      x00n=x002
+      x00n=0.d0
       x10=x101
       x01=x011   
       x20=x201
       x11=x111
       x02=x021
       
-      y00n=y002
+      y00n=0.d0
       y10=y101
       y01=y011    
       y20=y201
       y11=y111
-      y02=y021     
+      y02=y021  
       endif
-
+      
       if(igf.eq.11)then          
       x00n=0d0
       x10=x101
@@ -4007,7 +4088,7 @@ c-------------------------------------------
       y01=y011 
       y20=0.d0
       y11=0.d0
-      y02=0.d0      
+      y02=0.d0  
       endif
       
       if(igf.eq.12)then          
@@ -4023,7 +4104,7 @@ c-------------------------------------------
       y01=y011+y012  
       y20=0.d0
       y11=0.d0
-      y02=0.d0      
+      y02=0.d0  
       endif
 
       if(igf.eq.22)then
@@ -4039,10 +4120,10 @@ c-------------------------------------------
       y01=y011+y012    
       y20=y201+y202
       y11=y111+y112
-      y02=y021+y022      
+      y02=y021+y022
       endif
       
-      if(igf.eq.0)then    ! alles mitnehmen
+      if(igf.eq.0)then    ! alles mitnehmen (corresponds to igf=3)
       x00n=x002+x003
       x10=x101+x102
       x01=x011+x012    
@@ -4055,7 +4136,7 @@ c-------------------------------------------
       y01=y011+y012    
       y20=y201+y202
       y11=y111+y112
-      y02=y021+y022      
+      y02=y021+y022
       endif
 
       pxf=px0
@@ -4248,6 +4329,8 @@ c-------------------------------------------
 c     Imaginärteile der fqpk sind alle null wie es sein soll
 c-------------------------------------------
       include 'STGFM.cmn'   
+
+      iord=iord0
     
       f101=eta101(0)*(z0-zf)
       f011=eta011(0)*(z0-zf)      
@@ -4265,7 +4348,10 @@ c-------------------------------------------
         f011=f011+facex(nfou)*eta011(nfou)  
         f111=f111+facex(nfou)*eta111(nfou)  
         f201=f201+facex(nfou)*eta201(nfou)       
-        f021=f021+facex(nfou)*eta021(nfou)              
+        f021=f021+facex(nfou)*eta021(nfou)
+      enddo
+      
+      do nfou=-2*iord,2*iord              
         f102=f102+facex(nfou)*eta102(nfou)       
         f012=f012+facex(nfou)*eta012(nfou)
         f202=f202+facex(nfou)*eta202(nfou)     
