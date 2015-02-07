@@ -33,7 +33,7 @@
      & dprrdn001,dprrdnh001,drrrdn001,drrrdnh001,
      & dpppbn,dpppbnh,dpprbn,dpprbnh,
      & dprrbn,dprrbnh,drrrbn,drrrbnh,
-     & dn,dnh
+     & dn,dnh,dnzf,dnhzf
 			  
 	  real*8 pi,small,scal,x00,xp00,y00,yp00,dphi,phi,
      & x0l,xp0l,y0l,yp0l,x0,xp0,y0,yp0,z0min,z0,z0max,dz0,
@@ -186,7 +186,7 @@
      &   	             y011,y101,y002,y102,y012,y003,
      & x201,x021,x111,y201,y021,y111,
      & x202,x112,x022,y202,y112,y022,
-     & aclin,cclin,             
+     & aclin,cclin,dnzf,dnhzf,
      &   ap(0:30),aph(0:30),
      &   apn(0:300,0:300),apnh(0:300,0:300),    
      &   xmo,mo,mp0,

@@ -41,7 +41,12 @@ c------------- initialize
       isinoff=0     ! 1: no sin-terms in longitudinal expansion
       i_old=0       ! 1: old code
       iverbose=1  
-      bz_zf_off=0    ! 0: correct code, 1: force B_z=0 at zf
+      bz_zf_off=2    ! 1: force B_z=0 at zf, 
+                     ! 2: correct potentials by constant A(x0,y0,zf)
+                     !    careful: for repeated computations this option
+                     !             must be reset to 2 for every particle
+                     !             I did not yet implemented this.
+                     ! else: do nothing.
 
       iwbnbnh=0
       i_new_fields=1
@@ -1017,7 +1022,7 @@ c------------------------------------
       close(10)
       
       return      
-      end       
+      end    
 
 c--------------------------------        
       subroutine get_Gm0     
@@ -1818,7 +1823,29 @@ c---------------------------------
         dn001(0)=dn001(0)-dn001(nfou)*cdexp(xi*xkxn(nfou)*zf)
         dnh001(0)=dnh001(0)-dnh001(nfou)*cdexp(xi*xkxn(nfou)*zf)
         enddo
-      endif  
+      else if(bz_zf_off.ge.2) then
+        if(bz_zf_off.eq.2)then
+          if(iverbose.eq.1)write(6,*)'bz_zf_off ', bz_zf_off
+          dn001(0)=0
+          dnh001(0)=0
+          do nfou=-iord1,-1
+          dn001(0)=dn001(0)-dn001(nfou)*cdexp(xi*xkxn(nfou)*zf)
+          dnh001(0)=dnh001(0)-dnh001(nfou)*cdexp(xi*xkxn(nfou)*zf)
+          enddo
+          do nfou=1,iord1
+          dn001(0)=dn001(0)-dn001(nfou)*cdexp(xi*xkxn(nfou)*zf)
+          dnh001(0)=dnh001(0)-dnh001(nfou)*cdexp(xi*xkxn(nfou)*zf)
+          enddo
+          dnzf=dn001(0)
+          dnhzf=dnh001(0)
+          bz_zf_off=3
+          if(iverbose.eq.1)write(6,*)'bz_zf_off ', bz_zf_off
+        else
+          dn001(0)=dn001(0)+dnzf
+          dnh001(0)=dnh001(0)+dnhzf
+          if(iverbose.eq.1)write(6,*)'bz_zf_off ', bz_zf_off
+        endif
+      endif
 
       if((iverbose.eq.1).and.(iverdat.eq.1))then
         iverdat=0
