@@ -35,17 +35,17 @@ c------------- initialize
       ireverse=0   ! 1: change sign of all fields
       ilinear=0     ! 1: X002=0, Y002=0
                     ! 10: X002=0, Y002=0 & X011=X101=Y011=Y101=0
-      i_only_c0=1   ! 1: use only c0 Fourier coefficent 
-      
+      i_only_c0=0   ! 1: use only c0 Fourier coefficent 
+     
       ifldzero=0    ! 1: c0 is turned off 
       isinoff=0     ! 1: no sin-terms in longitudinal expansion
       i_old=0       ! 1: old code
-      iverbose=1  
+      iverbose=0  
       bz_zf_off=2    ! 1: force B_z=0 at zf, 
                      ! 2: correct potentials by constant A(x0,y0,zf)
-                     !    careful: for repeated computations this option
-                     !             must be reset to 2 for every particle
-                     !             I did not yet implemented this.
+                     !    this corrects observed
+                     !    asymmetry problem for quadrupoles and is
+                     !    correct (see theory)
                      ! else: do nothing.
 
       iwbnbnh=0
@@ -268,7 +268,9 @@ c--------- erste Ordnung
 
       iverdat=1   ! small switch to write some data to file  
 
+      if(bz_zf_off.eq.2)idndnh_force0=1
       call dndnh001(r0,phi0)
+
       call ddndnh001  
       call dddndnh001
       call ddddndnh001
@@ -322,7 +324,10 @@ c-----------------------------------------
 c      call zerodsdds
 
       call bnbnh(rf,phif)     
+
+      if(bz_zf_off.eq.2)idndnh_force0=2
       call dndnh001(rf,phif)
+
       call get_AxAy(rf,phif,zf,Axf,Ayf)
       
       xpf=pxf-Axf        ! Achtung xpf = pxf und ypf = pyf
@@ -1823,28 +1828,28 @@ c---------------------------------
         dn001(0)=dn001(0)-dn001(nfou)*cdexp(xi*xkxn(nfou)*zf)
         dnh001(0)=dnh001(0)-dnh001(nfou)*cdexp(xi*xkxn(nfou)*zf)
         enddo
-      else if(bz_zf_off.ge.2) then
-        if(bz_zf_off.eq.2)then
-          if(iverbose.eq.1)write(6,*)'bz_zf_off ', bz_zf_off
-          dn001(0)=0
-          dnh001(0)=0
-          do nfou=-iord1,-1
-          dn001(0)=dn001(0)-dn001(nfou)*cdexp(xi*xkxn(nfou)*zf)
-          dnh001(0)=dnh001(0)-dnh001(nfou)*cdexp(xi*xkxn(nfou)*zf)
-          enddo
-          do nfou=1,iord1
-          dn001(0)=dn001(0)-dn001(nfou)*cdexp(xi*xkxn(nfou)*zf)
-          dnh001(0)=dnh001(0)-dnh001(nfou)*cdexp(xi*xkxn(nfou)*zf)
-          enddo
-          dnzf=dn001(0)
-          dnhzf=dnh001(0)
-          bz_zf_off=3
-          if(iverbose.eq.1)write(6,*)'bz_zf_off ', bz_zf_off
-        else
-          dn001(0)=dn001(0)+dnzf
-          dnh001(0)=dnh001(0)+dnhzf
-          if(iverbose.eq.1)write(6,*)'bz_zf_off ', bz_zf_off
-        endif
+      endif
+
+      if(idndnh_force0.eq.1) then
+        dn001(0)=0
+        dnh001(0)=0
+        do nfou=-iord1,-1
+        dn001(0)=dn001(0)-dn001(nfou)*cdexp(xi*xkxn(nfou)*zf)
+        dnh001(0)=dnh001(0)-dnh001(nfou)*cdexp(xi*xkxn(nfou)*zf)
+        enddo
+        do nfou=1,iord1
+        dn001(0)=dn001(0)-dn001(nfou)*cdexp(xi*xkxn(nfou)*zf)
+        dnh001(0)=dnh001(0)-dnh001(nfou)*cdexp(xi*xkxn(nfou)*zf)
+        enddo
+        dnzf=dn001(0)
+        dnhzf=dnh001(0)
+        idndnh_force0=0
+        if(iverbose.eq.1)write(6,*)'dn001(0) and dnh001(0) copied '
+      else if (idndnh_force0.eq.2) then
+        dn001(0)=dn001(0)+dnzf
+        dnh001(0)=dnh001(0)+dnhzf
+        idndnh_force0=0
+        if(iverbose.eq.1)write(6,*)'dn001(0) and dnh001(0) adjusted '
       endif
 
       if((iverbose.eq.1).and.(iverdat.eq.1))then

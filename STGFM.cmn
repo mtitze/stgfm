@@ -61,7 +61,7 @@
      & i_readjust,ii,kloop,mo,mp0,nfour,ifile,nfou,nn,ip,ianzgm0,
      & i,ifacult,m,igf,ifldzero,isinoff,i_old,iwbnbnh,
      & itwo_steps,iverdat,bz_zf_off,iord1,iord2,iord3,
-     & iord_max,iord_newton
+     & iord_max,iord_newton,idndnh_force0
 
       character*80 dfile,fcfile
 	  complex*16 cn,xi,xm1,Gm0,bn,bnh,
@@ -190,7 +190,7 @@
      &   ap(0:30),aph(0:30),
      &   apn(0:300,0:300),apnh(0:300,0:300),    
      &   xmo,mo,mp0,
-     & pxf0,pyf0,pxf1,pyf1,pxf2,pyf2
+     & pxf0,pyf0,pxf1,pyf1,pxf2,pyf2,idndnh_force0
       common/fourier/s1,s2,xl,z0,zf,xlint,
      &   xkx0,xkxn(-600:600),xkxn2(-600:600),
      &   denom_new(-600:600),
