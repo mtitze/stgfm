@@ -1,11 +1,15 @@
 # ---
-# stgfm: symplectic tracking with generating function method
+# stgfm: symplectic tracking based on generating functions applied to multipoles
 # ---
 # 
 # Fortran implementation of formulas developed at Helmholtz-Zentrum
 # Berlin by M. Titze in cooperation with J. Bahrdt and G. Wuestefeld.
 # 
-# Warning: The formulas are not optimized for numeric applications, 
-# the code should only test the principles.
+# Warning! The code is not optimized for numeric applications or meant as a starting point for
+# higher-order implementations (because it will get very clumsy this way). It should only test the principles.
+# Especially the Fourier decomposition for the higher-order
+# generating functions and the cylinder coordinates for small offsets
+# produce systematic errors. The basic principles however do not require such restrictions and do not have
+# such errors.
 # 
 # contact the authors for further details.
