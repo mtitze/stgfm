@@ -271,7 +271,9 @@ c--------- erste Ordnung
       call dndnh001(r0,phi0)
 
       if (bz_zf_off.eq.2) then
-        call get_AxAy(r0,phi0,zf,axrp0zf,ayrp0zf)
+        call get_AxAy(phi0,zf,axrp0zf,ayrp0zf)
+          if (iverbose.eq.1) write(6,*)'axrp0zf, ayrp0zf', 
+     & axrp0zf, ayrp0zf
         dn001(0)=dn001(0) - dsin(phi0)*axrp0zf + dcos(phi0)*ayrp0zf
         dnh001(0)=dnh001(0) + dcos(phi0)*axrp0zf + dsin(phi0)*ayrp0zf
       endif
@@ -309,7 +311,7 @@ c-----------------------------------------
 
       call gx(r0,phi0)  ! groﬂ x
       call gy(r0,phi0)  ! groﬂ y 
-      call get_AxAy(r0,phi0,z0,Ax0,Ay0)          
+      call get_AxAy(phi0,z0,Ax0,Ay0)          
       call get_px0py0(xp0,yp0,Ax0,Ay0,px0,py0)  
       if(i_old.ne.1)then
         call get_pxfpyf_newton(px0,py0,pxf,pyf)  
@@ -326,20 +328,19 @@ c-----------------------------------------
       call cartesian2polar(xf,yf,rf,phif)
 
       call zerobsdbs
-c      call zerodsdds
+      call zerodsdds
 
       call bnbnh(rf,phif)
 
       call dndnh001(rf,phif)
       if (bz_zf_off.eq.2) then
-c        call get_AxAy(r0,phi0,zf,axrp0zf,ayrp0zf)
-        dn001(0)=dn001(0) - dsin(phi0)*axrp0zf + dcos(phi0)*ayrp0zf
-        dnh001(0)=dnh001(0) + dcos(phi0)*axrp0zf + dsin(phi0)*ayrp0zf
+        dn001(0)=dn001(0) - dsin(phif)*axrp0zf + dcos(phif)*ayrp0zf
+        dnh001(0)=dnh001(0) + dcos(phif)*axrp0zf + dsin(phif)*ayrp0zf
       endif
 
-      call get_AxAy(rf,phif,zf,Axf,Ayf)
+      call get_AxAy(phif,zf,Axf,Ayf)
       
-      xpf=pxf-Axf        ! Achtung xpf = pxf und ypf = pyf
+      xpf=pxf-Axf
       ypf=pyf-Ayf
       
       write(6,*)'  '
@@ -798,12 +799,15 @@ c------- the energy order is max 3 in this program.
 c------- the following operation compnesates an error in FOUR_NEW      
       cnt(0)=cnt(0)/2.d0     ! snt(0)=0
       if(ifldzero.eq.1)cnt(0)=0.d0     ! snt(0)=0            
-        
+
+c im code wird mit normierten groessen gerechnet. atrack kuerzt sich
+c wieder raus, da sowohl die bn's als auch brho skalieren.
+c Deswegen auskommentiert        
 c------- atrack-scaling 
-      do nfou=0,nfour
-      cnt(nfou)=cnt(nfou)*atrack
-      snt(nfou)=snt(nfou)*atrack
-      enddo
+c      do nfou=0,nfour
+c      cnt(nfou)=cnt(nfou)*atrack
+c      snt(nfou)=snt(nfou)*atrack
+c      enddo
 
 c------------ del sin-terms for test purposes
       if(isinoff.eq.1)then
@@ -3912,7 +3916,7 @@ c      y012=0.d0
       end
   
 c-------------------------------------------
-      subroutine get_AxAy(r,phi,z,Ax,Ay)      
+      subroutine get_AxAy(phi,z,Ax,Ay)      
 c-------------------------------------------
       include 'STGFM.cmn'      
       complex*16 axc,ayc,draxc,dpaxc,dparc
