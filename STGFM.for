@@ -268,8 +268,13 @@ c--------- erste Ordnung
 
       iverdat=1   ! small switch to write some data to file  
 
-      if(bz_zf_off.eq.2)idndnh_force0=1
       call dndnh001(r0,phi0)
+
+      if (bz_zf_off.eq.2) then
+        call get_AxAy(r0,phi0,zf,axrp0zf,ayrp0zf)
+        dn001(0)=dn001(0) - dsin(phi0)*axrp0zf + dcos(phi0)*ayrp0zf
+        dnh001(0)=dnh001(0) + dcos(phi0)*axrp0zf + dsin(phi0)*ayrp0zf
+      endif
 
       call ddndnh001  
       call dddndnh001
@@ -323,10 +328,14 @@ c-----------------------------------------
       call zerobsdbs
 c      call zerodsdds
 
-      call bnbnh(rf,phif)     
+      call bnbnh(rf,phif)
 
-      if(bz_zf_off.eq.2)idndnh_force0=2
       call dndnh001(rf,phif)
+      if (bz_zf_off.eq.2) then
+c        call get_AxAy(r0,phi0,zf,axrp0zf,ayrp0zf)
+        dn001(0)=dn001(0) - dsin(phi0)*axrp0zf + dcos(phi0)*ayrp0zf
+        dnh001(0)=dnh001(0) + dcos(phi0)*axrp0zf + dsin(phi0)*ayrp0zf
+      endif
 
       call get_AxAy(rf,phif,zf,Axf,Ayf)
       
@@ -1828,26 +1837,6 @@ c---------------------------------
         dn001(0)=dn001(0)-dn001(nfou)*cdexp(xi*xkxn(nfou)*zf)
         dnh001(0)=dnh001(0)-dnh001(nfou)*cdexp(xi*xkxn(nfou)*zf)
         enddo
-      endif
-
-      if(idndnh_force0.eq.1) then
-        dnzf=0.d0
-        dnhzf=0.d0
-        do nfou=-iord1,iord1
-        dnzf=dnzf-dn001(nfou)*cdexp(xi*xkxn(nfou)*zf)
-        dnhzf=dnhzf-dnh001(nfou)*cdexp(xi*xkxn(nfou)*zf)
-        enddo
-        dn001(0)=dn001(0)-dnzf
-        dnh001(0)=dnh001(0)-dnhzf
-        idndnh_force0=0
-        if(iverbose.eq.1)write(6,*)'001-copied dnzf, dnhzf', 
-     & dnzf, dnhzf
-      else if (idndnh_force0.eq.2) then
-        dn001(0)=dn001(0)-dnzf
-        dnh001(0)=dnh001(0)-dnhzf
-        idndnh_force0=0
-        if(iverbose.eq.1)write(6,*)'001-adjusted dnzf, dnhzf ', 
-     & dnzf, dnhzf
       endif
 
       if((iverbose.eq.1).and.(iverdat.eq.1))then

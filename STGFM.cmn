@@ -33,7 +33,7 @@
      & dprrdn001,dprrdnh001,drrrdn001,drrrdnh001,
      & dpppbn,dpppbnh,dpprbn,dpprbnh,
      & dprrbn,dprrbnh,drrrbn,drrrbnh,
-     & dn,dnh,dnzf,dnhzf
+     & dn,dnh
 			  
 	  real*8 pi,small,scal,x00,xp00,y00,yp00,dphi,phi,
      & x0l,xp0l,y0l,yp0l,x0,xp0,y0,yp0,z0min,z0,z0max,dz0,
@@ -54,14 +54,13 @@
      & x0aa,y0aa,xp0aa,yp0aa,
      & dist1,dist2,
      & pxf0,pyf0,pxf1,pyf1,pxf2,pyf2,
-     & atrack,
-     & dflotj
+     & atrack,dflotj,axrp0zf,ayrp0zf
 
 	  integer ireverse,ilinear,i_only_c0,iverbose,imode,iloop,
      & i_readjust,ii,kloop,mo,mp0,nfour,ifile,nfou,nn,ip,ianzgm0,
      & i,ifacult,m,igf,ifldzero,isinoff,i_old,iwbnbnh,
      & itwo_steps,iverdat,bz_zf_off,iord1,iord2,iord3,
-     & iord_max,iord_newton,idndnh_force0
+     & iord_max,iord_newton
 
       character*80 dfile,fcfile
 	  complex*16 cn,xi,xm1,Gm0,bn,bnh,
@@ -186,11 +185,11 @@
      &   	             y011,y101,y002,y102,y012,y003,
      & x201,x021,x111,y201,y021,y111,
      & x202,x112,x022,y202,y112,y022,
-     & aclin,cclin,dnzf,dnhzf,
+     & aclin,cclin,axrp0zf,ayrp0zf,
      &   ap(0:30),aph(0:30),
      &   apn(0:300,0:300),apnh(0:300,0:300),    
      &   xmo,mo,mp0,
-     & pxf0,pyf0,pxf1,pyf1,pxf2,pyf2,idndnh_force0
+     & pxf0,pyf0,pxf1,pyf1,pxf2,pyf2
       common/fourier/s1,s2,xl,z0,zf,xlint,
      &   xkx0,xkxn(-600:600),xkxn2(-600:600),
      &   denom_new(-600:600),
