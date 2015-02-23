@@ -35,18 +35,21 @@ c------------- initialize
       ireverse=0   ! 1: change sign of all fields
       ilinear=0     ! 1: X002=0, Y002=0
                     ! 10: X002=0, Y002=0 & X011=X101=Y011=Y101=0
-      i_only_c0=1   ! 1: use only c0 Fourier coefficent 
+      i_only_c0=0   ! 1: use only c0 Fourier coefficent 
      
       ifldzero=0    ! 1: c0 is turned off 
       isinoff=0     ! 1: no sin-terms in longitudinal expansion
       i_old=0       ! 1: old code
-      iverbose=1  
+      iverbose=0  
       bz_zf_off=2    ! 1: force B_z=0 at zf, 
                      ! 2: correct potentials by constant A(x0,y0,zf)
-                     !    this corrects observed
-                     !    asymmetry problem for quadrupoles and is
-                     !    correct (see theory)
+                     !    this partially corrects observed
+                     !    asymmetry problem for higher field str and is
+                     !    maxwell conform (see theory)
                      ! else: do nothing.
+
+      epsi=1.0      ! epsilon value for field str for testing purposes
+                    ! set to 1.0 as default (= do nothing)
 
       iwbnbnh=0
       i_new_fields=1
@@ -230,7 +233,7 @@ c======================= start 3D-multipole ========================
        z0=0.d0
        zf=zf0
       endif
-      call facexp
+c      call facexp
       endif
 
       call facexp
@@ -266,12 +269,14 @@ c--------- erste Ordnung
         call dddbnbnh(r0,phi0)
       endif 
 
-      iverdat=1   ! small switch to write some data to file  
+      iverdat=0   ! small switch to write some data to file  
 
       call dndnh001(r0,phi0)
 
       if (bz_zf_off.eq.2) then
-        call get_AxAy(r0,phi0,zf,axrp0zf,ayrp0zf)
+        axrp0zf=0.d0
+        ayrp0zf=0.d0
+        call get_AxAy(phi0,zf,axrp0zf,ayrp0zf)
         dn001(0)=dn001(0) - dsin(phi0)*axrp0zf + dcos(phi0)*ayrp0zf
         dnh001(0)=dnh001(0) + dcos(phi0)*axrp0zf + dsin(phi0)*ayrp0zf
       endif
@@ -309,7 +314,7 @@ c-----------------------------------------
 
       call gx(r0,phi0)  ! groﬂ x
       call gy(r0,phi0)  ! groﬂ y 
-      call get_AxAy(r0,phi0,z0,Ax0,Ay0)          
+      call get_AxAy(phi0,z0,Ax0,Ay0)          
       call get_px0py0(xp0,yp0,Ax0,Ay0,px0,py0)  
       if(i_old.ne.1)then
         call get_pxfpyf_newton(px0,py0,pxf,pyf)  
@@ -329,18 +334,18 @@ c-----------------------------------------
 c      call zerodsdds
 
       call bnbnh(rf,phif)
-
       call dndnh001(rf,phif)
+
       if (bz_zf_off.eq.2) then
-c        call get_AxAy(r0,phi0,zf,axrp0zf,ayrp0zf)
-        dn001(0)=dn001(0) - dsin(phi0)*axrp0zf + dcos(phi0)*ayrp0zf
-        dnh001(0)=dnh001(0) + dcos(phi0)*axrp0zf + dsin(phi0)*ayrp0zf
+c        call get_AxAy(phi0,zf,axrp0zf,ayrp0zf)
+        dn001(0)=dn001(0) - dsin(phif)*axrp0zf + dcos(phif)*ayrp0zf
+        dnh001(0)=dnh001(0) + dcos(phif)*axrp0zf + dsin(phif)*ayrp0zf
       endif
 
-      call get_AxAy(rf,phif,zf,Axf,Ayf)
+      call get_AxAy(phif,zf,Axf,Ayf)
       
-      xpf=pxf-Axf        ! Achtung xpf = pxf und ypf = pyf
-      ypf=pyf-Ayf
+      xpf=pxf-epsi*Axf
+      ypf=pyf-epsi*Ayf
       
       write(6,*)'  '
       write(6,*)' end multipole segment ',isteps
@@ -474,7 +479,7 @@ c      call bnbnh(r_loc,phi_loc)
 c      call dndnh001(r_loc,phi_loc)
 c      call ddndnh001 
 c      call get_b(bx,by,bz,r_loc,z_loc)
-c      call get_AxAy(rf,phif,zf,Axf,Ayf)     
+c      call get_AxAy(phif,zf,Axf,Ayf)     
       
 c      write(6,*)' bz = ',bz
 c      write(6,*)' zf-z0 = ',zf-z0   
@@ -3912,7 +3917,7 @@ c      y012=0.d0
       end
   
 c-------------------------------------------
-      subroutine get_AxAy(r,phi,z,Ax,Ay)      
+      subroutine get_AxAy(phi,z,Ax,Ay)      
 c-------------------------------------------
       include 'STGFM.cmn'      
       complex*16 axc,ayc,draxc,dpaxc,dparc
@@ -3950,8 +3955,8 @@ c-------------------------------------------
 c-------------------------------------------
       include 'STGFM.cmn'      
 
-      px0=xp0+Ax0
-      py0=yp0+Ay0
+      px0 = xp0 + epsi*Ax0
+      py0 = yp0 + epsi*Ay0
       
       return
       end
@@ -3975,16 +3980,16 @@ c-------------------------------------------
       isteps=0
       
       if(igf.eq.2)then
-      x00n=x002
-      x10=x101
-      x01=x011
+      x00n=x002*epsi**2
+      x10=x101*epsi
+      x01=x011*epsi
       x20=0.d0
       x11=0.d0
       x02=0.d0
       
-      y00n=y002    
-      y10=y101
-      y01=y011
+      y00n=y002*epsi**2    
+      y10=y101*epsi
+      y01=y011*epsi
       y20=0.d0
       y11=0.d0
       y02=0.d0
@@ -3992,82 +3997,82 @@ c-------------------------------------------
 
       if(igf.eq.21)then
       x00n=0.d0
-      x10=x101
-      x01=x011   
-      x20=x201
-      x11=x111
-      x02=x021
+      x10=x101*epsi
+      x01=x011*epsi
+      x20=x201*epsi
+      x11=x111*epsi
+      x02=x021*epsi
       
       y00n=0.d0
-      y10=y101
-      y01=y011    
-      y20=y201
-      y11=y111
-      y02=y021  
+      y10=y101*epsi
+      y01=y011*epsi
+      y20=y201*epsi
+      y11=y111*epsi
+      y02=y021*epsi
       endif
       
       if(igf.eq.11)then          
       x00n=0d0
-      x10=x101
-      x01=x011 
+      x10=x101*epsi
+      x01=x011*epsi
       x20=0.d0
       x11=0.d0
       x02=0.d0
       
       y00n=0.d0
-      y10=y101
-      y01=y011 
+      y10=y101*epsi
+      y01=y011*epsi
       y20=0.d0
       y11=0.d0
       y02=0.d0  
       endif
       
       if(igf.eq.12)then          
-      x00n=x002
-      x10=x101+x102
-      x01=x011+x012  
+      x00n=x002*epsi**2
+      x10=x101*epsi + x102*epsi**2
+      x01=x011*epsi + x012*epsi**2  
       x20=0.d0
       x11=0.d0
       x02=0.d0
       
-      y00n=y002
-      y10=y101+y102
-      y01=y011+y012  
+      y00n=y002*epsi**2
+      y10=y101*epsi + y102*epsi**2
+      y01=y011*epsi + y012*epsi**2  
       y20=0.d0
       y11=0.d0
       y02=0.d0  
       endif
 
       if(igf.eq.22)then
-      x00n=x002
-      x10=x101+x102
-      x01=x011+x012    
-      x20=x201+x202
-      x11=x111+x112
-      x02=x021+x022
+      x00n=x002*epsi**2
+      x10=x101*epsi + x102*epsi**2
+      x01=x011*epsi + x012*epsi**2    
+      x20=x201*epsi + x202*epsi**2
+      x11=x111*epsi + x112*epsi**2
+      x02=x021*epsi + x022*epsi**2
       
-      y00n=y002
-      y10=y101+y102
-      y01=y011+y012    
-      y20=y201+y202
-      y11=y111+y112
-      y02=y021+y022
+      y00n=y002*epsi**2
+      y10=y101*epsi + y102*epsi**2
+      y01=y011*epsi + y012*epsi**2
+      y20=y201*epsi + y202*epsi**2
+      y11=y111*epsi + y112*epsi**2
+      y02=y021*epsi + y022*epsi**2
       endif
       
       if(igf.eq.0)then    ! alles mitnehmen (corresponds to igf=3)
-      x00n=x002+x003
-      x10=x101+x102
-      x01=x011+x012    
-      x20=x201+x202
-      x11=x111+x112
-      x02=x021+x022
+      x00n=x002*epsi**2 + x003*epsi**3
+      x10=x101*epsi + x102*epsi**2
+      x01=x011*epsi + x012*epsi**2
+      x20=x201*epsi + x202*epsi**2
+      x11=x111*epsi + x112*epsi**2
+      x02=x021*epsi + x022*epsi**2
       
-      y00n=y002+y003
-      y10=y101+y102
-      y01=y011+y012    
-      y20=y201+y202
-      y11=y111+y112
-      y02=y021+y022
+      y00n=y002*epsi**2 + y003*epsi**3
+      y10=y101*epsi + y102*epsi**2
+      y01=y011*epsi + y012*epsi**2
+      y20=y201*epsi + y202*epsi**2
+      y11=y111*epsi + y112*epsi**2
+      y02=y021*epsi + y022*epsi**2
       endif
 
       pxf=px0
@@ -4313,51 +4318,51 @@ c-------------------------------------------
       complex*16 f10,f01,f20,f11,f02
       
       if(igf.eq.2)then    
-      f10=f101
-      f01=f011
+      f10=f101*epsi
+      f01=f011*epsi
       f20=0.d0
       f11=0.d0
       f02=0.d0
       endif
       
       if(igf.eq.11)then          
-      f10=f101
-      f01=f011
+      f10=f101*epsi
+      f01=f011*epsi
       f20=0.d0
       f11=0.d0
       f02=0.d0     
       endif   
 
       if(igf.eq.12)then          
-      f10=f101+f102
-      f01=f011+f012  
+      f10=f101*epsi + f102*epsi**2
+      f01=f011*epsi + f012*epsi**2 
       f20=0.d0
       f11=0.d0
       f02=0.d0     
       endif
       
       if(igf.eq.21)then
-      f10=f101
-      f01=f011    
-      f20=f201
-      f11=f111
-      f02=f021
+      f10=f101*epsi
+      f01=f011*epsi
+      f20=f201*epsi
+      f11=f111*epsi
+      f02=f021*epsi
       endif
       
       if(igf.eq.22)then
-      f10=f101+f102
-      f01=f011+f012    
-      f20=f201+f202
-      f11=f111+f112
-      f02=f021+f022
+      f10=f101*epsi + f102*epsi**2
+      f01=f011*epsi + f012*epsi**2
+      f20=f201*epsi + f202*epsi**2
+      f11=f111*epsi + f112*epsi**2
+      f02=f021*epsi + f022*epsi**2
       endif
 
       if(igf.eq.0)then
-      f10=f101+f102
-      f01=f011+f012    
-      f20=f201+f202
-      f11=f111+f112
-      f02=f021+f022
+      f10=f101*epsi + f102*epsi**2
+      f01=f011*epsi + f012*epsi**2
+      f20=f201*epsi + f202*epsi**2
+      f11=f111*epsi + f112*epsi**2
+      f02=f021*epsi + f022*epsi**2
       endif
 
 c      write(6,*) 'x0, pxf, f101', x0, pxf, f101

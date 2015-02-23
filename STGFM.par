@@ -3,7 +3,7 @@
 2          ! multipole order (1=dipole, 2=quadrupole etc)
 -0.195, 0.195 ! integration interval (meter)
 1          ! 1: adjust z0 and zf with Newton-iteration
--0.2,0.2 ! expansion interval for Fourier decomposition
+-0.2,0.2   ! expansion interval for Fourier decomposition
 3          ! maximum p-value for transverse field expansion 
 quad_long_9mm_cos_sin.res ! file name of Fourier coefficients
 0.009      ! reference radius for Fourier decomposition (m)
