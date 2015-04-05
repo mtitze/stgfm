@@ -800,14 +800,11 @@ c------- the following operation compnesates an error in FOUR_NEW
       cnt(0)=cnt(0)/2.d0     ! snt(0)=0
       if(ifldzero.eq.1)cnt(0)=0.d0     ! snt(0)=0            
 
-c im code wird mit normierten groessen gerechnet. atrack kuerzt sich
-c wieder raus, da sowohl die bn's als auch brho skalieren.
-c Deswegen auskommentiert        
 c------- atrack-scaling 
-c      do nfou=0,nfour
-c      cnt(nfou)=cnt(nfou)*atrack
-c      snt(nfou)=snt(nfou)*atrack
-c      enddo
+      do nfou=0,nfour
+      cnt(nfou)=cnt(nfou)*atrack
+      snt(nfou)=snt(nfou)*atrack
+      enddo
 
 c------------ del sin-terms for test purposes
       if(isinoff.eq.1)then
@@ -3952,10 +3949,10 @@ c       write(6,*)' dpAr ',dpAr
 c-------------------------------------------
       subroutine get_px0py0(xp0,yp0,Ax0,Ay0,px0,py0)      
 c-------------------------------------------
-      include 'STGFM.cmn'      
+      include 'STGFM.cmn'
 
-      px0=xp0+Ax0
-      py0=yp0+Ay0
+      px0 = xp0 + Ax0
+      py0 = yp0 + Ay0
       
       return
       end
