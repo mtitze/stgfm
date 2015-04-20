@@ -54,7 +54,7 @@
      & x0aa,y0aa,xp0aa,yp0aa,
      & dist1,dist2,
      & pxf0,pyf0,pxf1,pyf1,pxf2,pyf2,
-     & atrack,dflotj,axrp0zf,ayrp0zf
+     & atrack,axrp0zf,ayrp0zf
 
 	  integer ireverse,ilinear,i_only_c0,iverbose,imode,iloop,
      & i_readjust,ii,kloop,mo,mp0,nfour,ifile,nfou,nn,ip,ianzgm0,
