@@ -20,43 +20,56 @@ c-------------------------------------------------------------------------------
       real*8 x0ll,y0ll,xp0ll,yp0ll
       real*8 xfll,yfll,xpfll,ypfll
       real*8 bx,by,bz,r_loc,phi_loc,z_loc,xx,xlint0
-      integer isteps,i_new_fields
+      integer isteps,i_new_fields,ispecial
       
       dimension z0s(10000),xpfs(10000),xpfs0(10000)              
       dimension x0l(10001),xp0l(10001),y0l(10001),yp0l(10001)
       dimension xfl(0:10001),xpfl(0:10001),yfl(0:10001),ypfl(0:10001)
-      dimension dflotj(0:10001)   
-      
+
 c------------- initialize
+
+      write(6,*) '                                '
+      write(6,*) ' *****************************  '
+      write(6,*) '  STGFM                         '
+      write(6,*) ' *****************************  '
+      write(6,*) ' Experimental Code - 06.04.2015 '
+      write(6,*) ' (c) by M. Titze and J. Bahrdt  '
+      write(6,*) '                                '
+
       Pi=4.d0*datan(1.d0)
       small=1.d0-10
       iverdat=0    ! set this to one just before any dndnh001-call to
                    ! write down the corresponding data at this point
-      ireverse=0   ! 1: change sign of all fields
+      ireverse=1   ! 1: change sign of all fields
       ilinear=0     ! 1: X002=0, Y002=0
                     ! 10: X002=0, Y002=0 & X011=X101=Y011=Y101=0
-      i_only_c0=1   ! 1: use only c0 Fourier coefficent 
+      i_only_c0=0   ! 1: use only c0 Fourier coefficent 
      
       ifldzero=0    ! 1: c0 is turned off 
-      isinoff=0     ! 1: no sin-terms in longitudinal expansion
+      isinoff=1     ! 1: no sin-terms in longitudinal expansion
       i_old=0       ! 1: old code
       iverbose=1  
-      bz_zf_off=2    ! 1: force B_z=0 at zf, 
+      bz_zf_off=0    ! 1: force B_z=0 at zf, 
                      ! 2: correct potentials by constant A(x0,y0,zf)
                      !    this corrects observed
                      !    asymmetry problem for quadrupoles and is
                      !    correct (see theory)
                      ! else: do nothing.
 
-      iwbnbnh=0
-      i_new_fields=1
+      iwbnbnh=1      ! Write bn and bnh to file.
+      i_new_fields=1 ! The relations between the fields hold only
+                     ! for infinite order in p. If the summation
+                     ! is stopped at some point, we would introduce
+                     ! an error. Set this to 1 to avoid this error.
+
+      ispecial=0     ! 1: larger lattice
 
       call get_input
       if(ireverse.eq.1)scal=-scal
 
       call get_xkxn
       if(i_readjust.eq.1)call readjust_iinterval 
-c z0 and zf are set after this point
+c------------- z0 and zf are set after this point
 
       call get_xkxn    
       call cn_from_cntsnt_new   
@@ -75,7 +88,7 @@ c     imode   = 3: x, y
 c     imode   = 4: xp, yp
 c     imode   = 5: starting with x0, y0, tracking many turns
 
-1000  imode=0
+1000  imode=5
 c      imode=1234
 
       write(6,*)' imode, igf mode  = ',imode,igf
@@ -191,7 +204,23 @@ c---------------------------------------------------------------------
     
 c----- first half of SR
       call track_ring(x0a,xp0a,y0a,yp0a,
+     &                x0ll,xp0ll,y0ll,yp0ll,2)
+
+        if(ispecial.eq.1)then
+        x0a=x0ll
+        xp0a=xp0ll
+        y0a=y0ll
+        yp0a=yp0ll      
+        call track_ring(x0a,xp0a,y0a,yp0a,
+     &                x0ll,xp0ll,y0ll,yp0ll,1)   
+        x0a=x0ll
+        xp0a=xp0ll
+        y0a=y0ll
+        yp0a=yp0ll           
+        call track_ring(x0a,xp0a,y0a,yp0a,
      &                x0ll,xp0ll,y0ll,yp0ll,2)  
+        endif
+
       endif
       
       if(imode.ne.0)then
@@ -230,7 +259,6 @@ c======================= start 3D-multipole ========================
        z0=0.d0
        zf=zf0
       endif
-      call facexp
       endif
 
       call facexp
@@ -250,8 +278,12 @@ c ---- initialisiere mit erweiterter Ordnung
       call zeroesdes
            
       call cartesian2polar(x0,y0,r0,phi0) 
+      if (iverbose.eq.1) then
+        write(6,*)' r0 (mm)', (1000.d0)*r0
+        write(6,*)' phi0', phi0
+      endif
 c-------- Felder und 1., 2., 3. Ableitung 
-c--------- erste Ordnung     
+c--------- erste Ordnung
 
       call bnbnh(r0,phi0)
 
@@ -266,16 +298,24 @@ c--------- erste Ordnung
         call dddbnbnh(r0,phi0)
       endif 
 
-      iverdat=1   ! small switch to write some data to file  
-
       call dndnh001(r0,phi0)
 
       if (bz_zf_off.eq.2) then
         call get_AxAy(phi0,zf,axrp0zf,ayrp0zf)
-          if (iverbose.eq.1) write(6,*)'axrp0zf, ayrp0zf', 
+          if (iverbose.eq.1) write(6,*)' axrp0zf, ayrp0zf', 
      & axrp0zf, ayrp0zf
         dn001(0)=dn001(0) - dsin(phi0)*axrp0zf + dcos(phi0)*ayrp0zf
         dnh001(0)=dnh001(0) + dcos(phi0)*axrp0zf + dsin(phi0)*ayrp0zf
+      endif
+
+      if((iverbose.eq.1).and.(iverdat.eq.1))then
+        iverdat=0
+        write(6,*)' writing dn001(n) and dnh001(n) to dndnh.dat'
+        open(unit=10,file='dndnh.dat')
+        do i=-iord1,iord1
+        write(10,*)dn001(i),dnh001(i)   
+        enddo 
+        close(10)
       endif
 
       call ddndnh001  
@@ -309,9 +349,11 @@ c--------- vierte Ordnung
 c-----------------------------------------
       call get_fqpk
 
-      call gx(r0,phi0)  ! groﬂ x
-      call gy(r0,phi0)  ! groﬂ y 
-      call get_AxAy(phi0,z0,Ax0,Ay0)          
+      call gx(r0,phi0)  ! gross x
+      call gy(r0,phi0)  ! gross y
+      call get_AxAy(phi0,z0,Ax0,Ay0)
+
+c      write(6,*) ' Ax0 ==== ', Ax0          
       call get_px0py0(xp0,yp0,Ax0,Ay0,px0,py0)  
       if(i_old.ne.1)then
         call get_pxfpyf_newton(px0,py0,pxf,pyf)  
@@ -326,6 +368,10 @@ c-----------------------------------------
         call get_xfyf_old(x0,y0,xp0,yp0,Ax0,Ay0,pxf,pyf,xf,yf)
       endif
       call cartesian2polar(xf,yf,rf,phif)
+      if (iverbose.eq.1) then
+        write(6,*)' rf (mm)', (1000.d0)*rf
+        write(6,*)' phif', phif
+      endif
 
       call zerobsdbs
       call zerodsdds
@@ -334,14 +380,14 @@ c-----------------------------------------
 
       call dndnh001(rf,phif)
       if (bz_zf_off.eq.2) then
-        dn001(0)=dn001(0) - dsin(phif)*axrp0zf + dcos(phif)*ayrp0zf
-        dnh001(0)=dnh001(0) + dcos(phif)*axrp0zf + dsin(phif)*ayrp0zf
+        dn001(0)=dn001(0) - dsin(phi0)*axrp0zf + dcos(phi0)*ayrp0zf
+        dnh001(0)=dnh001(0) + dcos(phi0)*axrp0zf + dsin(phi0)*ayrp0zf
       endif
 
       call get_AxAy(phif,zf,Axf,Ayf)
       
-      xpf=pxf-Axf
-      ypf=pyf-Ayf
+      xpf = pxf - Axf
+      ypf = pyf - Ayf
       
       write(6,*)'  '
       write(6,*)' end multipole segment ',isteps
@@ -378,7 +424,23 @@ c----- convert to mm and mrad
       if(imode.eq.5)then
 c----- second half of SR      
       call track_ring(xfa,xpfa,yfa,ypfa,
-     &                xfll,xpfll,yfll,ypfll,2)            
+     &                xfll,xpfll,yfll,ypfll,2)
+
+        if(ispecial.eq.1)then
+        x0a=xfll
+        xp0a=xpfll
+        y0a=yfll
+        yp0a=ypfll      
+        call track_ring(x0a,xp0a,y0a,yp0a,
+     &                xfll,xpfll,yfll,ypfll,1)   
+        x0a=xfll
+        xp0a=xpfll
+        y0a=yfll
+        yp0a=ypfll           
+        call track_ring(x0a,xp0a,y0a,yp0a,
+     &                xfll,xpfll,yfll,ypfll,2)
+        endif 
+       
       else
       xfll=xfa
       yfll=yfa
@@ -445,21 +507,21 @@ c     imode   = 4: xp, yp
       
       open(unit=10,file='tune-x-STGFM.dat')
       do ii=1,iloop
-      write(10,111)dflotj(ii),xfl(ii)
+      write(10,111)dfloat(ii),xfl(ii)
       enddo    
       close(10) 
       
       open(unit=10,file='tune-y-STGFM.dat')
       do ii=1,iloop
-      write(10,111)dflotj(ii),yfl(ii)
+      write(10,111)dfloat(ii),yfl(ii)
       enddo    
       close(10)   
             
 111   format(2d20.12)      
       open(unit=10,file='tune-ref.dat')
       do ii=1,iloop
-      xx=100.d0*((2.d0*pi)/dflotj(iloop))
-      write(10,111)dflotj(ii),dsin(xx*dflotj(ii))
+      xx=100.d0*((2.d0*pi)/dfloat(iloop))
+      write(10,111)dfloat(ii),dsin(xx*dfloat(ii))
       enddo    
       close(10)     
       
@@ -489,7 +551,7 @@ c--------------------------------
       subroutine track_ring(x0a,xp0a,y0a,yp0a,x0b,xp0b,y0b,yp0b,iii)
 c--------------------------------        
 c
-c     ‹bergaben in mm und mrad
+c     Uebergaben in mm und mrad
 c     innerhalb der Routine m und rad (und Tesla)
 c
       include 'STGFM.cmn' 
@@ -538,10 +600,10 @@ c umrechnen in m und rad
       y0a1=matL1(1,1)*y0a+matL1(1,2)*yp0a
       yp0a1=matL1(2,1)*y0a+matL1(2,2)*yp0a
       
-      x0a2=matFk(1,1)*x0a1+matFk(1,2)*xp0a1
-      xp0a2=matFk(2,1)*x0a1+matFk(2,2)*xp0a1
-      y0a2=matDk(1,1)*y0a1+matDk(1,2)*yp0a1
-      yp0a2=matDk(2,1)*y0a1+matDk(2,2)*yp0a1 
+      x0a2=matDk(1,1)*x0a1+matDk(1,2)*xp0a1
+      xp0a2=matDk(2,1)*x0a1+matDk(2,2)*xp0a1
+      y0a2=matFk(1,1)*y0a1+matFk(1,2)*yp0a1
+      yp0a2=matFk(2,1)*y0a1+matFk(2,2)*yp0a1 
    
       x0b=matL2(1,1)*x0a2+matL2(1,2)*xp0a2
       xp0b=matL2(2,1)*x0a2+matL2(2,2)*xp0a2
@@ -915,7 +977,7 @@ c------------------------------------
       dimension deno(0:20)
       r02=r00*r00
 
-      deno(0)=2.d0*(r00**(mo-1)) ! Achtung: m! k¸rzt sich weg  
+      deno(0)=2.d0*(r00**(mo-1)) ! Achtung: m! k√ºrzt sich weg  
       cnr(0)=cnt(0)/(deno(0)/2.d0)
       cni(0)=0.d0
       cn(0)=cnr(0)+xi*cni(0)
@@ -1240,7 +1302,7 @@ c--------------------------------
       subroutine dbnbnh(r,phi)      
 c-------------------------------- 
 c
-c     missing sin(m*phi), cos(m*phi) are implenmeted 
+c     missing sin(m*phi), cos(m*phi) are implemented 
 c
 c---------------------------------     
       include 'STGFM.cmn'      
@@ -1839,16 +1901,6 @@ c---------------------------------
         dnh001(0)=dnh001(0)-dnh001(nfou)*cdexp(xi*xkxn(nfou)*zf)
         enddo
       endif
-
-      if((iverbose.eq.1).and.(iverdat.eq.1))then
-        iverdat=0
-        write(6,*)' writing dn001(n) and dnh001(n) to dndnh.dat'
-        open(unit=10,file='dndnh.dat')
-        do i=-iord1,iord1
-        write(10,*)dn001(i),dnh001(i)   
-        enddo 
-        close(10)
-      endif
     
       return
       end    
@@ -2223,11 +2275,11 @@ ctesttest
       write(6,*)' drreta011(1) ',drreta011(1)
       write(6,*)'-------------------------------'
       
-      write(6,*)'drrdnh101(1) ',drrdnh101(1)
-      write(6,*)'drrdnh011(1) ',drrdnh011(1)
+      write(6,*)' drrdnh101(1) ',drrdnh101(1)
+      write(6,*)' drrdnh011(1) ',drrdnh011(1)
       write(6,*)'-------------------------------'    
-      write(6,*)'drrdn101(1) ',drrdn101(1)
-      write(6,*)'drrdn011(1) ',drrdn011(1)
+      write(6,*)' drrdn101(1) ',drrdn101(1)
+      write(6,*)' drrdn011(1) ',drrdn011(1)
       write(6,*)'-------------------------------'    
            
       write(6,*)' drrdnh001(1) ',drrdnh001(1)
@@ -3007,7 +3059,7 @@ c---------------------------------
      &  ri*(cdexp(-xi*xkxn(nfou)*s1)*dpreta011(0)-dpreta011(nfou)))     
       drdn011(0)=drdn011(0)-drdn011(nfou)*cdexp(xi*xkxn(nfou)*zf)
       enddo
-  
+
       do nfou=-iord1,-1
       drdn101(nfou)=(xi/xkxn(nfou))*(
      & -r2i*(cdexp(-xi*xkxn(nfou)*s1)*dphieta101(0)-dphieta101(nfou))+
@@ -4141,7 +4193,7 @@ c-------------------------------------------
       subroutine get_pxfpyf_old(Ax0,Ay0,xp0,yp0,px0,py0,
      &           pxf,pyf)      
 c-------------------------------------------
-c     Imagin‰rteile von pxf, pyf sind null wie es sein soll
+c     Imagin√§rteile von pxf, pyf sind null wie es sein soll
 c-------------------------------------------
       include 'STGFM.cmn'      
       complex*16 f11,f12,f21,f22,
@@ -4258,7 +4310,7 @@ c---------- check
 c-------------------------------------------
       subroutine get_fqpk    
 c-------------------------------------------
-c     Imagin‰rteile der fqpk sind alle null wie es sein soll
+c     Imagin√§rteile der fqpk sind alle null wie es sein soll
 c-------------------------------------------
       include 'STGFM.cmn'   
     
@@ -4271,7 +4323,8 @@ c-------------------------------------------
       f021=eta021(0)*(z0-zf)    
       f202=eta202(0)*(z0-zf)    
       f112=eta112(0)*(z0-zf)         
-      f022=eta022(0)*(z0-zf)       
+      f022=eta022(0)*(z0-zf)      
+c      write(6,*) 'start0', eta101(0)*(z0-zf)
 
       do nfou=-iord1,iord1   ! facex(0) = 0
         f101=f101+facex(nfou)*eta101(nfou)
@@ -4279,6 +4332,11 @@ c-------------------------------------------
         f111=f111+facex(nfou)*eta111(nfou)  
         f201=f201+facex(nfou)*eta201(nfou)       
         f021=f021+facex(nfou)*eta021(nfou)
+c        write(6,*) ' +++ '
+c        write(6,*) 'nfou', nfou
+c        write(6,*) 'facex(nfou)', facex(nfou)
+c        write(6,*) 'eta101(nfou)', eta101(nfou)
+c        write(6,*) 'f101', f101
       enddo
       
       do nfou=-iord2,iord2              
@@ -4451,3 +4509,5 @@ c----------------------------------------------------------
       endif
       return
       end
+
+
