@@ -1,0 +1,20 @@
+      integer nstepp, nphp, istatus, ndim,
+     & nstep, nphener, ieneloss, ivelofield
+
+      parameter (nstepp=10000000,nphp=10001)
+
+      double precision
+     & xexit, yexit, zexit, texit,
+     & vnxex, vnyex, vnzex,
+     & powden, dgamtot,
+     & traxyz(14,nstepp), phener(nphp),
+     & stokes(4,nphp),
+     & xelec, yelec, zelec,
+     & vxelec, vyelec, vzelec,
+     & xfurad, yfurad, zfurad,
+     & efx, efy, efz,
+     & xobsv, yobsv, zobsv,
+     & phelow, phehig
+
+      complex*16 
+     & aradx(nphp),arady(nphp),aradz(nphp)

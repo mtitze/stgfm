@@ -17,10 +17,12 @@ c
 c--------------------------------------------------------------------------------------
 
       include 'STGFM.cmn'
+      include 'STGFM_urad.cmn'
+
       real*8 x0ll,y0ll,xp0ll,yp0ll
       real*8 xfll,yfll,xpfll,ypfll
       real*8 bx,by,bz,r_loc,phi_loc,z_loc,xx,xlint0
-      integer isteps,i_new_fields,ispecial
+      integer isteps,i_new_fields,ispecial,imethod
       
       dimension z0s(10000),xpfs(10000),xpfs0(10000)              
       dimension x0l(10001),xp0l(10001),y0l(10001),yp0l(10001)
@@ -46,23 +48,23 @@ c------------- initialize
       i_only_c0=0   ! 1: use only c0 Fourier coefficent 
      
       ifldzero=0    ! 1: c0 is turned off 
-      isinoff=1     ! 1: no sin-terms in longitudinal expansion
+      isinoff=0     ! 1: no sin-terms in longitudinal expansion
       i_old=0       ! 1: old code
-      iverbose=1  
+      iverbose=1    ! verbose mode  
       bz_zf_off=0    ! 1: force B_z=0 at zf, 
                      ! 2: correct potentials by constant A(x0,y0,zf)
-                     !    this corrects observed
-                     !    asymmetry problem for quadrupoles and is
-                     !    correct (see theory)
                      ! else: do nothing.
 
-      iwbnbnh=1      ! Write bn and bnh to file.
+      iwbnbnh=0      ! Write bn and bnh to file.
       i_new_fields=1 ! The relations between the fields hold only
                      ! for infinite order in p. If the summation
                      ! is stopped at some point, we would introduce
                      ! an error. Set this to 1 to avoid this error.
 
       ispecial=0     ! 1: larger lattice
+
+      imethod=1      ! 0: STGFM
+                     ! 1: urad
 
       call get_input
       if(ireverse.eq.1)scal=-scal
@@ -75,7 +77,8 @@ c------------- z0 and zf are set after this point
       call cn_from_cntsnt_new   
       call scal_cn      ! include stiffness of beam
       call get_Gm0  
-      call apnapnh            
+      call apnapnh
+      if(imethod.eq.1)call calc_apnt           
       call facexp  
        
 c      call get_psi
@@ -87,8 +90,7 @@ c     imode   = 2: y, yp
 c     imode   = 3: x, y
 c     imode   = 4: xp, yp
 c     imode   = 5: starting with x0, y0, tracking many turns
-
-1000  imode=5
+1000  imode=0
 c      imode=1234
 
       write(6,*)' imode, igf mode  = ',imode,igf
@@ -107,8 +109,8 @@ c      write(6,*)' xp0,yp0 (mrad) '
 c      read(5,*)xp00,yp00      
 c      write(6,*)' x00,y00 (mm) '
 c      read(5,*)x00,y00
-      write(6,*)' x0,xp0 (mm) '
-      read(5,*)x00,xp00      
+      write(6,*)' x0, xp0 (mm) '
+      read(5,*)x00, xp00      
 c      write(6,*)' y0,yp0 (mm) '
 c      read(5,*)y00,yp00      
       iloop = 1
@@ -145,7 +147,7 @@ c      read(5,*)y00,yp00
       endif
       
       if(imode.eq.5)then        
-      x00=30.0d0       ! mm
+      x00=35.0d0       ! mm
       xp00=0.d0      ! mrad
       y00=0.d0      ! mm
       yp00=0.d0     ! mrad
@@ -235,7 +237,6 @@ c----- first half of SR
        y0=y0l(ii)/1000.d0     ! get rad
        yp0=yp0l(ii)/1000.d0   ! get rad
        
-c======================= start 3D-multipole ========================
       xf=x0
       xpf=xp0      
       yf=y0
@@ -282,6 +283,14 @@ c ---- initialisiere mit erweiterter Ordnung
         write(6,*)' r0 (mm)', (1000.d0)*r0
         write(6,*)' phi0', phi0
       endif
+
+c======================= start 3D-multipole ========================
+
+      if(imethod.eq.0)then
+c --------------------------------------------------
+c              *** METHOD 0 (STGFM) ***
+c --------------------------------------------------
+
 c-------- Felder und 1., 2., 3. Ableitung 
 c--------- erste Ordnung
 
@@ -388,7 +397,153 @@ c      write(6,*) ' Ax0 ==== ', Ax0
       
       xpf = pxf - Axf
       ypf = pyf - Ayf
-      
+
+      endif
+c --------------------------------------------------
+c              *** END OF METHOD 0 *** 
+c --------------------------------------------------
+
+
+c --------------------------------------------------
+c              *** METHOD 1 (urad) ***
+c --------------------------------------------------
+      if(imethod.eq.1)then
+c     compare to tracking in WAVE program (courtesy M. Scheer)
+
+        dgamtot = 0.0d0
+
+        ! coordinates at start
+        xelec = z0
+        yelec = y0
+        zelec = -x0
+        vxelec = 1.0d0 ! the velocity is internally normalized
+        vyelec = yp0
+        vzelec = -xp0
+
+        ! end-plane coordinates
+        xfurad = zf
+        yfurad = 0.0d0
+        zfurad = 0.0d0
+        efx = 1.0d0
+        efy = 0.0d0
+        efz = 0.0d0
+
+        nstep = 0
+
+        ! if nstep > 0:
+        ! ************
+        ! dimension of traxyz
+        ! the value should be choosen
+        ! according to the integration length
+        ! zf - z0 and stepsize ds
+        ds = 2.0d-4 ! in [m]
+        ndim = 1.0d6
+
+        ! observation point in [m]
+        xobsv = 10.0d0
+        yobsv = 0.0d0
+        zobsv = 0.0d0
+
+        ! radiation effects
+        phelow = 0.0d0
+        phehig = 0.0d0
+        nphener = 0
+
+        ieneloss = 0
+        ivelofield = 1
+
+        if(iverbose.eq.1)then
+          write(6,*) ''
+          write(6,*) ' Input parameters for urad:'
+          write(6,*) '---------------------------'
+
+          write(6,*) ' Energy (GeV) : ', energy
+          write(6,*) ''
+          write(6,*) ' *** start coordinates '
+          write(6,*) ' xelec : ', xelec
+          write(6,*) ' yelec : ', yelec
+          write(6,*) ' zelec : ', zelec
+          write(6,*) ''
+          write(6,*) ' vxelec : ', vxelec
+          write(6,*) ' vyelec : ', vyelec
+          write(6,*) ' vzelec : ', vzelec
+          write(6,*) ''
+          write(6,*) ' *** end-plane coordinates '
+          write(6,*) ' xfurad : ', xfurad
+          write(6,*) ' yfurad : ', yfurad
+          write(6,*) ' zfurad : ', zfurad
+          write(6,*) ''
+          write(6,*) ' efx : ', efx
+          write(6,*) ' efy : ', efy
+          write(6,*) ' efz : ', efz
+          write(6,*) ''
+          write(6,*) ' step size ds [m] : ', ds
+          write(6,*) ' nstep : ', nstep
+          write(6,*) ''
+        endif
+
+        call urad(
+     &  energy,dgamtot,
+     &  xelec,yelec,zelec,vxelec,vyelec,vzelec,
+     &  xfurad,yfurad,zfurad,efx,efy,efz,
+     &  xexit,yexit,zexit,vnxex,vnyex,vnzex,texit,ds,
+     &  nstep,ndim,traxyz,
+     &  xobsv,yobsv,zobsv,phelow,phehig,
+     &  nphener,phener,aradx,arady,aradz,stokes,powden,
+     &  ieneloss,ivelofield
+     &  ,istatus)
+
+c     Notes:
+c     ------
+c
+c     (*) x, y, z in urad corresponds to z0, y0, -x0 in
+c         our notation.
+c     (*) the component of the velocity vector in longitudinal
+c         direction is set to one (input norm does not matter).
+c     (*) the point of exit plane was choosen as
+c         (zf, 0, 0)
+c     (*) according to readme_urad.txt:
+c         real* efx: x component of normal vector of exit plane
+c         real* efy: y component of normal vector of exit plane
+c         real* efy: z component of normal vector of exit plane
+c     (*) real*8 texit: t of last point of the trajectory: not
+c         used here.
+c     (*) ds: not used here.
+c     (*) nstep is set to 1 (we do not need to store more steps)
+c     (*) ... further parameters are set accordingly (no synch. rad.).
+c     (*) ndim is stepsize in urad. I have set it to 1. Note that
+c         traxyz is initialized by double precision traxyz(14,ndim)
+c         in urad
+
+c     Convert urad output to our notation
+        if(iverbose.eq.1)then
+          write(6,*) ' URAD: istatus = ', istatus
+          if(istatus.eq.0) write(6,*)' URAD: no error found'
+          if(istatus.eq.-1) write(6,*)' URAD: initial gamma or
+     & velocity zero'
+          if(istatus.eq.-2) write(6,*)' URAD: dimension ndim of traxyz
+     & exceeded'
+          if(istatus.eq.-3) write(6,*)' URAD: bad value of ivelofield'
+          ! xexit should be equal to zf
+          write(6,*) ''
+          write(6,*)' check: zf - xexit = ',zf - xexit
+        endif
+        xf = -zexit
+        yf = yexit
+
+c     For the slopes we get a normalized vector of the form
+c     (-vnzex, vnyex, vnxex). Since vnxex is the longitudinal component
+c     which is 1 in STGFM, we have to multiply this vector by 1/vnxex.
+
+        xpf = -vnzex/vnxex
+        ypf = vnyex/vnxex
+
+      endif
+c --------------------------------------------------
+c              *** END OF METHOD 1 *** 
+c --------------------------------------------------
+
+
       write(6,*)'  '
       write(6,*)' end multipole segment ',isteps
       write(6,*)'-------------------------'     
@@ -397,8 +552,10 @@ c      write(6,*) ' Ax0 ==== ', Ax0
       write(6,*)' xp0, yp0 (mrad) ',(1000.d0)*xp0,(1000.d0)*yp0
       write(6,*)' xpf, ypf (mrad) ',(1000.d0)*xpf,(1000.d0)*ypf  
 
-      write(6,*)' Ax0, Ay0 ',Ax0,Ay0      
-      write(6,*)' Axf, Ayf ',Axf,Ayf   
+      if((iverbose.eq.1).and.(imethod.eq.0))then
+        write(6,*)' Ax0, Ay0 ',Ax0,Ay0      
+        write(6,*)' Axf, Ayf ',Axf,Ayf
+      endif
 
       enddo ! itwo_steps
       
@@ -410,8 +567,10 @@ c      write(6,*) ' Ax0 ==== ', Ax0
       write(6,*)' xp0, yp0 (mrad) ',(1000.d0)*xp0,(1000.d0)*yp0
       write(6,*)' xpf, ypf (mrad) ',(1000.d0)*xpf,(1000.d0)*ypf
 
-      write(6,*)' Ax0, Ay0 ',Ax0,Ay0      
-      write(6,*)' Axf, Ayf ',Axf,Ayf
+      if((iverbose.eq.1).and.(imethod.eq.0))then
+        write(6,*)' Ax0, Ay0 ',Ax0,Ay0      
+        write(6,*)' Axf, Ayf ',Axf,Ayf
+      endif
      
 c================== end 3D-multipole =====================================
 
@@ -813,7 +972,8 @@ c--------------------------------
         beta=dsqrt(1.d0-1.d0/gamma*2)
         speed=beta*clight
         scal=(gamma*emass*speed)/echarge    
-        write(6,*)' Brho = ',scal
+        write(6,*)' Energy (GeV): ', energy
+        write(6,*)' Brho:         ', scal
         
       read(10,*)iord1    ! expansion order of exponentials
       read(10,*)mo      ! multipole order (1=dipole, 2=quadrupole etc)
@@ -1263,12 +1423,12 @@ c------------------------------------------------------------------------------
       bn(nfou)=0.d0
       bnh(nfou)=0.d0
       facc=cn(nfou)
-      re=r**(mo-3) 
+      re=r**(mo-1) 
       
       do ip=0,mp0
-      re=re*r2   
       bn(nfou)=bn(nfou)+apn(ip,nfou)*re
-      bnh(nfou)=bnh(nfou)+apnh(ip,nfou)*re 
+      bnh(nfou)=bnh(nfou)+apnh(ip,nfou)*re
+      re=re*r2 
       enddo
                   
       bn(nfou)=bn(nfou)*facc    
@@ -4510,4 +4670,133 @@ c----------------------------------------------------------
       return
       end
 
+c----------------------------------------------------------
+      subroutine uradfield(x,y,z,bx,by,bz,ex,ey,ez,istatus)
+c----------------------------------------------------------
+
+c This subroutine calculates the magnetic (and electric) field
+c B=(bx,by,bz) and E=(ex,ey,ez) for the urad subroutine (WAVE)
+
+c istatus: error flag (default 0)
+
+c Coordinate system used in urad (right handed):
+c -----------------------------------
+
+c   x: longitudinal direction
+c   y: transversal vertical direction
+c   z: transversal horizontal direction
+
+c     According to STGFM theory we have (in STGFM-notation!):
+c      B_x = \sum_nfou [ cos(phi) bn(nfou) - sin(phi) bnh(nfou) ]*
+c     exp(i*xkxn(nfou)*z) ,
+c       B_y = \sum_nfou [ sin(phi) bn(nfou) + cos(phi) bnh(nfou) ]*
+c     exp(i*xkxn(nfou)*z) ,
+c     where bn and bnh depend on the transversal coordinates r and phi.
+
+      include 'STGFM.cmn'
+
+      real*8 ourx, oury, ourz, ourbx, ourby, ourbz, ex, ey, ez,
+     &bx, by, bz
+
+      integer istatus
+
+      complex*16 facc
+
+c     As a first step, we convert the above coordinate system to our
+c     notation. x, y, z in urad corresponds to ourz, oury, -ourx in our
+c     system.
+
+      ourx = -z
+      oury = y
+      ourz = x
+
+c     compute bn and bnh
+      call cartesian2polar(ourx,oury,r,phi)
+      call bnbnh(r,phi)      
+c     Attention: sin(m phi), cos(m phi) terms were skipped in bnbnh, so
+      bn(0)=dsin(xmo*phi)*bn(0)
+      bnh(0)=dcos(xmo*phi)*bnh(0)
+      do nfou=1,nfour
+        bn(nfou)=dsin(xmo*phi)*bn(nfou)
+        bnh(nfou)=dcos(xmo*phi)*bnh(nfou)
+  
+        bn(-nfou)=dconjg(bn(nfou))    
+        bnh(-nfou)=dconjg(bnh(nfou))
+      enddo
+
+c     for ourbz we need to repeat the algorithm in subroutine bnbnh
+      r2=r*r
+
+      bnt(0)=0.d0
+      do nfou=1,nfour
+        bnt(nfou)=0.d0
+        facc=xi*cn(nfou)*dsin(xmo*phi)
+        re=r**(mo-2)
+        do ip=0,mp0
+          bnt(nfou)=bnt(nfou)+apnt(ip,nfou)*re
+          re=re*r2
+        enddo
+
+        bnt(nfou)=bnt(nfou)*facc
+        bnt(-nfou)=dconjg(bnt(nfou))
+      enddo
+
+c     compute ourbx, ourby and ourbz
+      ourbx=0.d0
+      ourby=0.d0
+      ourbz=0.d0
+      do nfou=-nfour,nfour
+        ourbx = ourbx + (dcos(phi)*bn(nfou) - dsin(phi)*bnh(nfou))*
+     &cdexp(xi*xkxn(nfou)*ourz)
+        ourby = ourby + (dsin(phi)*bn(nfou) + dcos(phi)*bnh(nfou))*
+     &cdexp(xi*xkxn(nfou)*ourz)
+        ourbz = ourbz + bnt(nfou)*cdexp(xi*xkxn(nfou)*ourz)
+      enddo
+
+c     back transformation of output to urad notation
+      bx = ourbz
+      by = ourby
+      bz = -ourbx
+
+c     we have no electric field.
+      ex = 0.d0
+      ey = 0.d0
+      ez = 0.d0
+
+      istatus=0
+
+      end
+
+
+c------------------------------------------        
+      subroutine calc_apnt     
+c------------------------------------------      
+c
+c     calculates apnt(ip,nfou)
+c
+c     this routine requires only to be called once
+c
+c------------------------------------------
+      include 'STGFM.cmn'      
+
+c---- compute apt indices from 0 to mp0
+      apt(0)=0.d0
+      do ip=1,mp0          
+        apt(ip)=ip*(ip + mo)/dfloat(4**(ip-1)*
+     &ifacult(mo+ip)*ifacult(ip))
+      enddo
+
+c---- now apnt      
+      do nfou=1,iord_max
+        fac=1.d0/xkxn(nfou)
+        do ip=0,mp0
+          apnt(ip,nfou)=apt(ip)*fac
+          fac=fac*xkxn2(nfou)
+        enddo
+      enddo    
+           
+      return      
+      end  
+
+      include 'urad.f'
 

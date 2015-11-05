@@ -40,6 +40,7 @@
      & zf,xpfs0,r0,phi0,ax0,ay0,axf,ayf,px0,py0,pxf,pyf,rf,phif,
      & xf,yf,xpf,ypf,z0s,xpfs,xfl,yfl,xpfl,ypfl,zz,xpi,
      & gamma,cnt,snt,cnr,cni,ap,aph,apn,apnh,xmo,s1,s2,xl,xlint,
+     & apnt,apt,
      & xkx0,xkxn,xkxn2,r00,f101,f011,f111,f012,f102,f201,f021,
      & f202,f022,f112,
      & energy,beta,clight,speed,emass,echarge,small_loc,dd,z00,za,
@@ -63,7 +64,7 @@
      & iord_max,iord_newton
 
       character*80 dfile,fcfile
-	  complex*16 cn,xi,xm1,Gm0,bn,bnh,
+	  complex*16 cn,xi,xm1,Gm0,bn,bnh,bnt,
      & dn001,dnh001,dn011,dnh011,
      & dn101,dnh101,dn002,dnh002,
      & dpdn101,dpdn011,dpdnh101,dpdnh011,
@@ -95,7 +96,7 @@
       common/names/fcfile
 	  common/mult1/cn(-300:300),eta(0:3,0:3,0:3,-300:300),
      &   cnt(0:300),snt(0:300),cnr(0:300),cni(0:300),
-     &   bn(-300:300),bnh(-300:300),
+     &   bn(-300:300),bnh(-300:300),bnt(-300:300),
      &   drbn(-300:300),dphibn(-300:300),
      &   drbnh(-300:300),dphibnh(-300:300),
      &   dppbn(-300:300),dprbn(-300:300),
@@ -186,8 +187,8 @@
      & x201,x021,x111,y201,y021,y111,
      & x202,x112,x022,y202,y112,y022,
      & aclin,cclin,axrp0zf,ayrp0zf,
-     &   ap(0:30),aph(0:30),
-     &   apn(0:300,0:300),apnh(0:300,0:300),    
+     &   ap(0:30),aph(0:30),apt(0:30),
+     &   apn(0:30,0:300),apnh(0:30,0:300),apnt(0:30,0:300),
      &   xmo,mo,mp0,
      & pxf0,pyf0,pxf1,pyf1,pxf2,pyf2
       common/fourier/s1,s2,xl,z0,zf,xlint,
@@ -198,4 +199,4 @@
      &   nfour,iverbose,ilinear,i_readjust,iverdat,
      &   i_only_c0,igf,ifldzero,isinoff,i_old,ireverse,itwo_steps
       common/tracking/atrack,iord1,iord2,iord3,
-     & iord_max,iord_newton
+     & iord_max,iord_newton,energy
