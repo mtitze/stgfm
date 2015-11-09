@@ -19,6 +19,8 @@ c-------------------------------------------------------------------------------
       include 'STGFM.cmn'
       include 'STGFM_urad.cmn'
 
+      logical plotbf
+
       real*8 x0ll,y0ll,xp0ll,yp0ll
       real*8 xfll,yfll,xpfll,ypfll
       real*8 bx,by,bz,r_loc,phi_loc,z_loc,xx,xlint0
@@ -63,8 +65,11 @@ c------------- initialize
 
       ispecial=0     ! 1: larger lattice
 
-      imethod=1      ! 0: STGFM
+      imethod=0      ! 0: STGFM
                      ! 1: urad
+
+      plotbf=.true.   ! if true, then write B-field components to file bfield.dat
+                          ! see subroutine plotbfield for more information
 
       call get_input
       if(ireverse.eq.1)scal=-scal
@@ -78,8 +83,10 @@ c------------- z0 and zf are set after this point
       call scal_cn      ! include stiffness of beam
       call get_Gm0  
       call apnapnh
-      if(imethod.eq.1)call calc_apnt           
+      if((imethod.eq.1).or.plotbf)call calc_apnt           
       call facexp  
+
+      if(plotbf)call plotbfield
        
 c      call get_psi
       
@@ -4797,6 +4804,60 @@ c---- now apnt
            
       return      
       end  
+
+      subroutine plotbfield
+c---- This subroutine plots the b-field in a grid of
+c     (ixgrid+1)*(iygrid+1)*(izgrid+1) points in the
+c     range of [xrange(1), xrange(2)]X[yrange(1), ... etc.
+c
+c     Attention: The coordinate system used here is the
+c     same as in urad!
+
+      include 'STGFM.cmn'
+
+      integer ixgrid, iygrid, izgrid, istatus,
+     & ix, iy, iz, number
+c---- define gridpoint numbers
+      parameter(ixgrid=64, iygrid=16, izgrid=16)
+      double precision xgrid, ygrid,
+     & zgrid, xrange(2), yrange(2), zrange(2),
+     & bxplt, byplt, bzplt, explt, eyplt, ezplt
+
+c---- define grid range
+      xrange(1) = z0
+      xrange(2) = zf
+
+      yrange(1) = -2.0d-2
+      yrange(2) = 2.0d-2
+
+      zrange(1) = -2.0d-2
+      zrange(2) = 2.0d-2
+
+      write(6,*) ' writing B-field to file ...'
+      number = 1
+      open(unit=10,file='B_FIELD.DAT',status='replace')
+      do ix=1,ixgrid+1
+         do iy=1,iygrid+1
+            do iz=1,izgrid+1
+
+               xgrid =  xrange(1) + (ix - 1)*
+     & (xrange(2) - xrange(1))/ixgrid
+               ygrid =  yrange(1) + (iy - 1)*
+     & (yrange(2) - yrange(1))/iygrid
+               zgrid =  zrange(1) + (iz - 1)*
+     & (zrange(2) - zrange(1))/izgrid
+
+               call uradfield(xgrid,ygrid,zgrid,
+     & bxplt,byplt,bzplt,explt,eyplt,ezplt,istatus)
+               write(10,*) number,
+     & xgrid, ygrid, zgrid, bxplt, byplt, bzplt
+               number = number + 1
+            enddo
+         enddo
+      enddo
+      close(10)
+
+      end
 
       include 'urad.f'
 

@@ -12,4 +12,7 @@
 # produce systematic errors. The basic principles however do not require such restrictions and do not have
 # such errors.
 # 
+# To compile with urad, use:
+# gfortran -Wno-align-commons -fno-automatic -ffixed-line-length-none -funroll-loops STGFM.for -o STGFM.exe
+#
 # contact the authors for further details.
