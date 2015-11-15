@@ -24,8 +24,8 @@ c-------------------------------------------------------------------------------
       real*8 x0ll,y0ll,xp0ll,yp0ll
       real*8 xfll,yfll,xpfll,ypfll
       real*8 bx,by,bz,r_loc,phi_loc,z_loc,xx,xlint0
-      integer isteps,i_new_fields,ispecial,imethod
-      
+      integer isteps,i_new_fields,ispecial
+
       dimension z0s(10000),xpfs(10000),xpfs0(10000)              
       dimension x0l(10001),xp0l(10001),y0l(10001),yp0l(10001)
       dimension xfl(0:10001),xpfl(0:10001),yfl(0:10001),ypfl(0:10001)
@@ -64,9 +64,6 @@ c------------- initialize
                      ! an error. Set this to 1 to avoid this error.
 
       ispecial=0     ! 1: larger lattice
-
-      imethod=1      ! 0: STGFM
-                     ! 1: urad
 
       writebf=.false.   ! if true, then write B-field components to file bfield.dat
                           ! see subroutine plotbfield for more information
@@ -420,16 +417,14 @@ c     compare to tracking in WAVE program (courtesy M. Scheer)
         dgamtot = 0.0d0
 
         ! coordinates at start
-c        xelec = z0 - z0 ! SHIFT
         xelec = z0
         yelec = y0
         zelec = -x0
-        vxelec = 1.0d0 ! the velocity is internally normalized
+        vxelec = 1d0 ! the velocity is internally normalized
         vyelec = yp0
         vzelec = -xp0
 
         ! end-plane coordinates
-c        xfurad = zf - z0 ! SHIFT
         xfurad = zf
         yfurad = 0.0d0
         zfurad = 0.0d0
@@ -445,7 +440,7 @@ c        xfurad = zf - z0 ! SHIFT
         ! the value should be choosen
         ! according to the integration length
         ! zf - z0 and stepsize ds
-        ds = 2.0d-5 ! in [m]
+        ds = uradstep ! in [m]  ! e.g. 2.0d-2
         ndim = 1.0d6
 
         ! observation point in [m]
@@ -487,12 +482,12 @@ c        xfurad = zf - z0 ! SHIFT
           write(6,*) ' efz : ', efz
           write(6,*) ''
           write(6,*) ' step size ds [m] : ', ds
-          write(6,*) ' nstep : ', nstep
+c          write(6,*) ' nstep : ', nstep
           write(6,*) ''
         endif
 
         call urad(
-     &  energy,dgamtot,
+     &  gamma,dgamtot,
      &  xelec,yelec,zelec,vxelec,vyelec,vzelec,
      &  xfurad,yfurad,zfurad,efx,efy,efz,
      &  xexit,yexit,zexit,vnxex,vnyex,vnzex,texit,ds,
@@ -1006,6 +1001,8 @@ c--------------------------------
 c      write(6,*)' nfour input = ',nfour
       read(10,*)atrack  ! additional factor for all elements in imode = 5   
       read(10,*)itwo_steps
+      read(10,*)imethod ! 0: STGFM, 1: urad
+      read(10,*)uradstep      ! stepsize in case of imethod=1, otherwise no use
       close(10)
 
 c------- the energy order is max 3 in this program.
@@ -4705,7 +4702,7 @@ c     where bn and bnh depend on the transversal coordinates r and phi.
       include 'STGFM.cmn'
 
       real*8 ourx, oury, ourz, ourbx, ourby, ourbz, ex, ey, ez,
-     &bx, by, bz
+     &bx, by, bz, tmp
 
       logical :: exist, plottra
 
@@ -4714,7 +4711,7 @@ c     where bn and bnh depend on the transversal coordinates r and phi.
       complex*16 facc
 
 c     optional: plot trajectory
-      plottra = .true.
+      plottra = .false.
       if (plottra) then
 
       inquire(file="tra.dat", exist=exist)
@@ -4735,7 +4732,6 @@ c     notation. x, y, z in urad corresponds to ourz, oury, -ourx in our
 c     system.
       ourx = -z
       oury = y
-c      ourz = x + z0 ! SHIFT
       ourz = x
 
 c     compute bn and bnh
@@ -4822,9 +4818,13 @@ c---- now apnt
       return      
       end  
 
+
+c------------------------------------------
       subroutine plotbfield
-c---- This subroutine plots the b-field in a grid of
-c     (ixgrid+1)*(iygrid+1)*(izgrid+1) points in the
+c------------------------------------------
+
+c     This subroutine plots the b-field in a grid of
+c     ixgrid*iygrid*izgrid points in the
 c     range of [xrange(1), xrange(2)]X[yrange(1), ... etc.
 c
 c     Attention: The coordinate system used here is the
