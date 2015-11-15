@@ -4702,7 +4702,7 @@ c     where bn and bnh depend on the transversal coordinates r and phi.
       include 'STGFM.cmn'
 
       real*8 ourx, oury, ourz, ourbx, ourby, ourbz, ex, ey, ez,
-     &bx, by, bz, tmp
+     &bx, by, bz
 
       logical :: exist, plottra
 
