@@ -19,7 +19,7 @@ c-------------------------------------------------------------------------------
       include 'STGFM.cmn'
       include 'STGFM_urad.cmn'
 
-      logical plotbf
+      logical writebf
 
       real*8 x0ll,y0ll,xp0ll,yp0ll
       real*8 xfll,yfll,xpfll,ypfll
@@ -36,7 +36,7 @@ c------------- initialize
       write(6,*) ' *****************************  '
       write(6,*) '  STGFM                         '
       write(6,*) ' *****************************  '
-      write(6,*) ' Experimental Code - 06.04.2015 '
+      write(6,*) ' Experimental Code - 15.11.2015 '
       write(6,*) ' (c) by M. Titze and J. Bahrdt  '
       write(6,*) '                                '
 
@@ -65,10 +65,10 @@ c------------- initialize
 
       ispecial=0     ! 1: larger lattice
 
-      imethod=0      ! 0: STGFM
+      imethod=1      ! 0: STGFM
                      ! 1: urad
 
-      plotbf=.true.   ! if true, then write B-field components to file bfield.dat
+      writebf=.false.   ! if true, then write B-field components to file bfield.dat
                           ! see subroutine plotbfield for more information
 
       call get_input
@@ -83,11 +83,11 @@ c------------- z0 and zf are set after this point
       call scal_cn      ! include stiffness of beam
       call get_Gm0  
       call apnapnh
-      if((imethod.eq.1).or.plotbf)call calc_apnt           
+      if((imethod.eq.1).or.writebf)call calc_apnt           
       call facexp  
 
-      if(plotbf)call plotbfield
-       
+      if(writebf)call plotbfield
+     
 c      call get_psi
       
 c------------- putting numbers      
@@ -420,6 +420,7 @@ c     compare to tracking in WAVE program (courtesy M. Scheer)
         dgamtot = 0.0d0
 
         ! coordinates at start
+c        xelec = z0 - z0 ! SHIFT
         xelec = z0
         yelec = y0
         zelec = -x0
@@ -428,6 +429,7 @@ c     compare to tracking in WAVE program (courtesy M. Scheer)
         vzelec = -xp0
 
         ! end-plane coordinates
+c        xfurad = zf - z0 ! SHIFT
         xfurad = zf
         yfurad = 0.0d0
         zfurad = 0.0d0
@@ -443,7 +445,7 @@ c     compare to tracking in WAVE program (courtesy M. Scheer)
         ! the value should be choosen
         ! according to the integration length
         ! zf - z0 and stepsize ds
-        ds = 2.0d-4 ! in [m]
+        ds = 2.0d-5 ! in [m]
         ndim = 1.0d6
 
         ! observation point in [m]
@@ -524,7 +526,7 @@ c         in urad
 
 c     Convert urad output to our notation
         if(iverbose.eq.1)then
-          write(6,*) ' URAD: istatus = ', istatus
+c          write(6,*) ' URAD: istatus = ', istatus
           if(istatus.eq.0) write(6,*)' URAD: no error found'
           if(istatus.eq.-1) write(6,*)' URAD: initial gamma or
      & velocity zero'
@@ -978,7 +980,7 @@ c--------------------------------
         gamma=(1.0d9*energy*echarge)/(emass*clight**2) 
         beta=dsqrt(1.d0-1.d0/gamma*2)
         speed=beta*clight
-        scal=(gamma*emass*speed)/echarge    
+        scal=(gamma*emass*speed)/echarge
         write(6,*)' Energy (GeV): ', energy
         write(6,*)' Brho:         ', scal
         
@@ -4705,35 +4707,43 @@ c     where bn and bnh depend on the transversal coordinates r and phi.
       real*8 ourx, oury, ourz, ourbx, ourby, ourbz, ex, ey, ez,
      &bx, by, bz
 
+      logical :: exist, plottra
+
       integer istatus
 
       complex*16 facc
 
+c     optional: plot trajectory
+      plottra = .true.
+      if (plottra) then
+
+      inquire(file="tra.dat", exist=exist)
+      if (exist) then
+        open(12, file="tra.dat", status="old", position="append",
+     &  action="write")
+      else
+        open(12, file="tra.dat", status="new", action="write")
+      end if
+      write(12,*) x, y, z
+      close(12)
+
+      endif
+
+
 c     As a first step, we convert the above coordinate system to our
 c     notation. x, y, z in urad corresponds to ourz, oury, -ourx in our
 c     system.
-
       ourx = -z
       oury = y
+c      ourz = x + z0 ! SHIFT
       ourz = x
 
 c     compute bn and bnh
       call cartesian2polar(ourx,oury,r,phi)
-      call bnbnh(r,phi)      
-c     Attention: sin(m phi), cos(m phi) terms were skipped in bnbnh, so
-      bn(0)=dsin(xmo*phi)*bn(0)
-      bnh(0)=dcos(xmo*phi)*bnh(0)
-      do nfou=1,nfour
-        bn(nfou)=dsin(xmo*phi)*bn(nfou)
-        bnh(nfou)=dcos(xmo*phi)*bnh(nfou)
-  
-        bn(-nfou)=dconjg(bn(nfou))    
-        bnh(-nfou)=dconjg(bnh(nfou))
-      enddo
+      call bnbnh(r,phi)
 
 c     for ourbz we need to repeat the algorithm in subroutine bnbnh
       r2=r*r
-
       bnt(0)=0.d0
       do nfou=1,nfour
         bnt(nfou)=0.d0
@@ -4743,7 +4753,6 @@ c     for ourbz we need to repeat the algorithm in subroutine bnbnh
           bnt(nfou)=bnt(nfou)+apnt(ip,nfou)*re
           re=re*r2
         enddo
-
         bnt(nfou)=bnt(nfou)*facc
         bnt(-nfou)=dconjg(bnt(nfou))
       enddo
@@ -4753,17 +4762,25 @@ c     compute ourbx, ourby and ourbz
       ourby=0.d0
       ourbz=0.d0
       do nfou=-nfour,nfour
-        ourbx = ourbx + (dcos(phi)*bn(nfou) - dsin(phi)*bnh(nfou))*
-     &cdexp(xi*xkxn(nfou)*ourz)
-        ourby = ourby + (dsin(phi)*bn(nfou) + dcos(phi)*bnh(nfou))*
-     &cdexp(xi*xkxn(nfou)*ourz)
+c     Attention: sin(m phi), cos(m phi) terms were skipped in bnbnh, so
+c                we include these factors infront of bn and bnh
+        ourbx = ourbx + (dcos(phi)*dsin(mo*phi)*bn(nfou) - 
+     & dsin(phi)*dcos(xmo*phi)*bnh(nfou))*cdexp(xi*xkxn(nfou)*ourz)
+        ourby = ourby + (dsin(phi)*dsin(mo*phi)*bn(nfou) + 
+     & dcos(phi)*dcos(xmo*phi)*bnh(nfou))*cdexp(xi*xkxn(nfou)*ourz)
         ourbz = ourbz + bnt(nfou)*cdexp(xi*xkxn(nfou)*ourz)
       enddo
 
 c     back transformation of output to urad notation
-      bx = ourbz
-      by = ourby
-      bz = -ourbx
+c     the scaling factor scal = p_kin/echarge is required
+c     to go from dimensionless quantities back to SI units
+      bx = ourbz*scal
+      by = ourby*scal
+      bz = -ourbx*scal
+
+c      bx = 0d0
+c      by = 2d-4
+c      bz = 0d0
 
 c     we have no electric field.
       ex = 0.d0
@@ -4834,18 +4851,26 @@ c---- define grid range
       zrange(2) = 2.0d-2
 
       write(6,*) ' writing B-field to file ...'
+      if(iverbose.eq.1) then
+         write(6,*) ' gridpoints:',
+     & ixgrid*iygrid*izgrid
+         write(6,*) ' ixgrid, iygrid, izgrid',
+     & ixgrid, iygrid, izgrid
+         write(6,*)'----------------------------------'
+      endif
+
       number = 1
       open(unit=10,file='B_FIELD.DAT',status='replace')
-      do ix=1,ixgrid+1
-         do iy=1,iygrid+1
-            do iz=1,izgrid+1
+      do ix=1,ixgrid
+         do iy=1,iygrid
+            do iz=1,izgrid
 
                xgrid =  xrange(1) + (ix - 1)*
-     & (xrange(2) - xrange(1))/ixgrid
+     & (xrange(2) - xrange(1))/(ixgrid-1)
                ygrid =  yrange(1) + (iy - 1)*
-     & (yrange(2) - yrange(1))/iygrid
+     & (yrange(2) - yrange(1))/(iygrid-1)
                zgrid =  zrange(1) + (iz - 1)*
-     & (zrange(2) - zrange(1))/izgrid
+     & (zrange(2) - zrange(1))/(izgrid-1)
 
                call uradfield(xgrid,ygrid,zgrid,
      & bxplt,byplt,bzplt,explt,eyplt,ezplt,istatus)
