@@ -38,7 +38,7 @@ Installation
 License
 -------
 
-*Copyright (c) 2014, 2015 by Johannes Bahrdt (johannes.bahrdt@helmholtz-berlin.de)
+Copyright (c) 2014, 2015 by Johannes Bahrdt (johannes.bahrdt@helmholtz-berlin.de)
 and Malte Titze (malte.titze@cern.ch)
 
 This program is free software: you can redistribute it and/or modify
@@ -52,7 +52,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.*
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 *The URAD subroutine was created by Michael Scheer and
