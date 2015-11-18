@@ -199,5 +199,5 @@
      &   f101,f011,f111,f012,f102,f201,f021,f202,f022,f112,	 
      &   nfour,iverbose,ilinear,i_readjust,iverdat,
      &   i_only_c0,igf,ifldzero,isinoff,i_old,ireverse,itwo_steps
-      common/tracking/atrack,iord1,iord2,iord3,
-     & iord_max,iord_newton,energy,imethod,uradstep
+      common/tracking/atrack,energy,uradstep,iord1,iord2,iord3,
+     & iord_max,iord_newton,imethod

@@ -21,6 +21,7 @@ c-------------------------------------------------------------------------------
 
       logical writebf
 
+      real*8 gammai
       real*8 x0ll,y0ll,xp0ll,yp0ll
       real*8 xfll,yfll,xpfll,ypfll
       real*8 bx,by,bz,r_loc,phi_loc,z_loc,xx,xlint0
@@ -486,8 +487,10 @@ c          write(6,*) ' nstep : ', nstep
           write(6,*) ''
         endif
 
+        gammai=gamma
+        
         call urad(
-     &  gamma,dgamtot,
+     &  gammai,dgamtot,
      &  xelec,yelec,zelec,vxelec,vyelec,vzelec,
      &  xfurad,yfurad,zfurad,efx,efy,efz,
      &  xexit,yexit,zexit,vnxex,vnyex,vnzex,texit,ds,

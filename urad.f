@@ -386,7 +386,8 @@ c--- Loop der Trajektorie
       call uradfield(x2b,y2b,z2b,bx2,by2,bz2,efx2,efy2,efz2,istatus)
       if (istatus.ne.0) goto 9000
 
-      call uradstep(x1,y1,z1,vx1,vy1,vz1,bx2,by2,bz2,efx2,efy2,efz2,dtim,
+      call uradstep(x1,y1,z1,vx1,vy1,vz1,bx2,by2,bz2,efx2,efy2,efz2,
+     &  dtim,
      &  x2,y2,z2,vx2,vy2,vz2,vxp,vyp,vzp,gamma,icharge,ieneloss,dgamma)
 
       if (ieneloss.ne.0) then
@@ -641,7 +642,8 @@ c--- ende of trajectory, dist2 not exactly zero, correct x2
       call uradfield(x2b,y2b,z2b,bx2,by2,bz2,efx2,efy2,efz2,istatus)
       if (istatus.ne.0) goto 9000
 
-      call uradstep(x1,y1,z1,vx1,vy1,vz1,bx2,by2,bz2,efx2,efy2,efz2,dddt,
+      call uradstep(x1,y1,z1,vx1,vy1,vz1,bx2,by2,bz2,efx2,efy2,efz2,
+     &  dddt,
      &  x3int,y3int,z3int,vx3int,vy3int,vz3int,
      &  vxpint,vypint,vzpint,gamma,icharge,ieneloss,dgamma)
 
@@ -657,7 +659,8 @@ c--- ende of trajectory, dist2 not exactly zero, correct x2
       call uradfield(x2b,y2b,z2b,bx2,by2,bz2,efx2,efy2,efz2,istatus)
       if (istatus.ne.0) goto 9000
 
-      call uradstep(x1,y1,z1,vx1,vy1,vz1,bx2,by2,bz2,efx2,efy2,efz2,ddddt,
+      call uradstep(x1,y1,z1,vx1,vy1,vz1,bx2,by2,bz2,efx2,efy2,efz2,
+     &  ddddt,
      &  x2,y2,z2,vx2,vy2,vz2,
      &  vxp,vyp,vzp,gamma,icharge,
      &  ieneloss,dgamma)
@@ -1161,7 +1164,8 @@ c The energy and gamma of the particle is not changed, but returned in dgamma
       data emasskg1/9.10938188D-31/
       data emassg1/0.510998902D-3/
 
-      if (efieldx.eq.0.0d0.and.efieldy.eq.0.0d0.and.efieldz.eq.0.0d0) then
+      if (efieldx.eq.0.0d0.and.efieldy.eq.0.0d0.
+     &    and.efieldz.eq.0.0d0) then
         dgamma=0.0d0
         return
       endif
@@ -1307,7 +1311,8 @@ c NO WARRANTY
 
         yrnint(1)=0.0d0
         do i=2,10
-          yrnint(i)=yrnint(i-1)+(yrn(i)+yrn(i-1))/2.0d0*(xrn(i)-xrn(i-1))
+          yrnint(i)=yrnint(i-1)+(yrn(i)+yrn(i-1))
+     &    /2.0d0*(xrn(i)-xrn(i-1))
         enddo
         yrnint10=yrnint(10)
 
@@ -1382,7 +1387,8 @@ c NO WARRANTY
         call util_spline_inter(yrnint,xrn,coef,nbing1,
      &    dble(rnrn),eec,-1)
         if (eec.lt.0.0d0) then
-          print*,'*** Warning in PHOTON: Negative photon energy occured ***'
+          print*,'*** Warning in PHOTON: Negative 
+     &    photon energy occured ***'
           print*,'rnrn:',rnrn
           print*,'setting Epho/Ec = 1.e-6'
           eec=1.0d-6
@@ -1502,7 +1508,8 @@ c and 1.5e-2 for y>30.
 
         call util_spline_coef(ywlow,r1low,npoilow,0.0d0,0.0d0,coeflow,
      &    w1,w2,w3,w4)
-        call util_spline_coef(ywhigh,r1high,npoihigh,0.0d0,0.0d0,coefhigh,
+        call util_spline_coef(ywhigh,r1high,npoihigh,0.0d0
+     &    ,0.0d0,coefhigh,
      &    w1,w2,w3,w4)
 
         ical=1
@@ -1520,7 +1527,8 @@ c and 1.5e-2 for y>30.
      &      391.8d0 * y**(1.0d0/3.0d0) * exp(-y*0.8307d0)
      &      -192.0d0 * sqrt(y) * exp(-y*0.7880d0))
         else if (y.ge.4.0d0.and.y.le.y_30) then
-          call util_spline_inter(ywhigh,r1high,coefhigh,npoihigh,y,r1,-1)
+          call util_spline_inter(ywhigh,r1high,
+     &         coefhigh,npoihigh,y,r1,-1)
           g1=r1*(164.0d0*sqrt(y)* EXP(-y))
         endif
 
@@ -1823,7 +1831,8 @@ C--   WORKINGSPACE: AA(N),BB(N),CC(N),C(N)
       DO J=2,N-1
         if(x(j+1).eq.x(j)) then
           write(6,*)
-          write(6,*)'*** Error in util_spline_coef: Intervall of zero length'
+          write(6,*)'*** Error in util_spline_coef: 
+     & Intervall of zero length'
           write(6,*)'j, x(j), x(j+1):',j,x(j),x(j+1)
           write(6,*)
           stop
