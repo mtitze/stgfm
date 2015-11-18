@@ -37,21 +37,37 @@ Installation
 
 License
 -------
-*STGFM is free software. You may copy, distribute, and modify it under
-the terms of the License contained in the file LICENSE distributed
-with this package. The URAD subroutine was created by Michael Scheer and
-is distributed under the licence found in urad.f*
+*
+Copyright (c) 2014, 2015 by Johannes Bahrdt (johannes.bahrdt@helmholtz-berlin.de)
+and Malte Titze (malte.titze@cern.ch)
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*
+
+*The URAD subroutine was created by Michael Scheer and
+is distributed under the terms of the licence found in urad.f*
 
 Contributors
 ------------
-### [GitHub Contributor Graph](https://github.com/mtitze/stgfm) ###
+### [GitHub Contributor Graph](https://github.com/mtitze/stgfm/graphs/contributors) ###
 
 ### Current Maintainers: ###
 * Malte Titze
 
 ### Original Authors: ###
-* Malte Titze
 * Johannes Bahrdt
+* Malte Titze
 
 ### Contributors not included in github history ###
 * Johannes Bahrdt
