@@ -38,8 +38,8 @@ Installation
 License
 -------
 
-Copyright (c) 2014, 2015 by Johannes Bahrdt (johannes.bahrdt@helmholtz-berlin.de)
-and Malte Titze (malte.titze@cern.ch)
+Copyright (c) 2014, 2015 by Johannes Bahrdt (johannes.bahrdt at helmholtz-berlin.de)
+and Malte Titze (malte.titze at cern.ch)
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
